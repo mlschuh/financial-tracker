@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Financial Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"
+    />
+    <script src="https://unpkg.com/htmx.org@1.8.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.2/main.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/rrule@2.6.4/dist/es5/rrule.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="split-container" id="main-split">
+        <div class="split-container" id="top-split">
+          <div class="pane" id="calendar-pane">
+            <h2>Calendar</h2>
+            <div id="calendar"></div>
+          </div>
+          <div class="pane" id="event-editor-pane">
+            <h2>Event Editor</h2>
+            <div id="event-form-container">
+              <form
+                id="event-form"
+                hx-post="/events"
+                hx-trigger="submit"
+                hx-on::after-request="refreshData()"
+              >
+                <input type="hidden" id="event-id" name="id" />
+                <div class="form-group">
+                  <label for="event-name">Name:</label>
+                  <input type="text" id="event-name" name="name" required />
+                </div>
+                <div class="form-group">
+                  <label for="event-category">Category:</label>
+                  <input
+                    type="text"
+                    id="event-category"
+                    name="category"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="event-account">Account:</label>
+                  <select id="event-account" name="account" required>
+                    <!-- Will be populated with accounts -->
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="event-amount">Amount:</label>
+                  <input
+                    type="number"
+                    id="event-amount"
+                    name="amount"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="event-start">Start Date:</label>
+                  <input
+                    type="datetime-local"
+                    id="event-start"
+                    name="start"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="event-type">Type:</label>
+                  <select id="event-type" name="type" required>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Recurrence:</label>
+                  <div id="rrule-builder">
+                    <div>
+                      <label for="rrule-freq">Frequency:</label>
+                      <select id="rrule-freq">
+                        <option value="NONE">None</option>
+                        <option value="DAILY">Daily</option>
+                        <option value="WEEKLY">Weekly</option>
+                        <option value="MONTHLY">Monthly</option>
+                        <option value="YEARLY">Yearly</option>
+                      </select>
+                    </div>
+                    <div id="rrule-interval-container" style="display: none">
+                      <label for="rrule-interval">Interval:</label>
+                      <input
+                        type="number"
+                        id="rrule-interval"
+                        min="1"
+                        value="1"
+                      />
+                    </div>
+                    <div id="rrule-end-container" style="display: none">
+                      <label for="rrule-end-type">End:</label>
+                      <select id="rrule-end-type">
+                        <option value="never">Never</option>
+                        <option value="until">Until Date</option>
+                        <option value="count">After Occurrences</option>
+                      </select>
+                      <div id="rrule-until-container" style="display: none">
+                        <input type="date" id="rrule-until" />
+                      </div>
+                      <div id="rrule-count-container" style="display: none">
+                        <input
+                          type="number"
+                          id="rrule-count"
+                          min="1"
+                          value="10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <input type="hidden" id="event-rrule" name="rrule" />
+                </div>
+                <div class="form-group" id="exceptions-container">
+                  <label>Exceptions:</label>
+                  <div id="exceptions-list"></div>
+                  <button type="button" id="add-exception-btn">
+                    Add Exception
+                  </button>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" id="save-event-btn">Save Event</button>
+                  <button
+                    type="button"
+                    id="delete-event-btn"
+                    hx-delete="/events"
+                    hx-include="#event-id"
+                    hx-trigger="click"
+                    hx-on::after-request="refreshData()"
+                    style="display: none"
+                  >
+                    Delete Event
+                  </button>
+                  <button type="button" id="new-event-btn">New Event</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="split-container" id="bottom-split">
+          <div class="pane" id="chart-pane">
+            <h2>Account Balance Over Time</h2>
+            <canvas id="balance-chart"></canvas>
+          </div>
+          <div class="pane" id="filter-pane">
+            <h2>Filters</h2>
+            <div class="filter-section">
+              <h3>Accounts</h3>
+              <div id="account-filters">
+                <!-- Will be populated with account checkboxes -->
+              </div>
+            </div>
+            <div class="filter-section">
+              <h3>Date Range</h3>
+              <div class="date-range-picker">
+                <div class="form-group">
+                  <label for="date-range-start">Start Date:</label>
+                  <input type="date" id="date-range-start" />
+                </div>
+                <div class="form-group">
+                  <label for="date-range-end">End Date:</label>
+                  <input type="date" id="date-range-end" />
+                </div>
+                <button type="button" id="apply-filters-btn">
+                  Apply Filters
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="exception-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn">&times;</span>
+        <h3>Add Exception</h3>
+        <form id="exception-form">
+          <div class="form-group">
+            <label for="exception-date">Date:</label>
+            <input type="date" id="exception-date" required />
+          </div>
+          <div class="form-group">
+            <label for="exception-type">Type:</label>
+            <select id="exception-type" required>
+              <option value="single">Single Occurrence</option>
+              <option value="forever">All Future Occurrences</option>
+              <option value="skip">Skip This Occurrence</option>
+            </select>
+          </div>
+          <div class="form-group" id="exception-amount-container">
+            <label for="exception-amount">Amount:</label>
+            <input type="number" id="exception-amount" />
+          </div>
+          <div class="form-actions">
+            <button type="button" id="save-exception-btn">Add Exception</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      let appData = {
+        accounts: [],
+        events: [],
+        eventOccurances: [],
+        accountBalances: [],
+      };
+
+      let selectedEvent = null;
+      let calendar = null;
+      let balanceChart = null;
+      let selectedAccounts = new Set();
+      let dateRange = {
+        start: null,
+        end: null,
+      };
+      let exceptions = {};
+
+      // Initialize splitter
+      document.addEventListener("DOMContentLoaded", function () {
+        // Create resizable panes
+        Split(["#top-split", "#bottom-split"], {
+          direction: "vertical",
+          sizes: [50, 50],
+          minSize: 100,
+          gutterSize: 10,
+        });
+
+        Split(["#calendar-pane", "#event-editor-pane"], {
+          sizes: [50, 50],
+          minSize: 100,
+          gutterSize: 10,
+        });
+
+        Split(["#chart-pane", "#filter-pane"], {
+          sizes: [70, 30],
+          minSize: 100,
+          gutterSize: 10,
+        });
+
+        // Initialize date range pickers
+        flatpickr("#date-range-start", {});
+        flatpickr("#date-range-end", {});
+        flatpickr("#event-start", {
+          enableTime: true,
+          dateFormat: "Y-m-d H:i",
+        });
+        flatpickr("#rrule-until", {});
+        flatpickr("#exception-date", {});
+
+        // Set up event handlers
+        document
+          .getElementById("rrule-freq")
+          .addEventListener("change", updateRRuleBuilder);
+        document
+          .getElementById("rrule-end-type")
+          .addEventListener("change", updateRRuleEndType);
+        document
+          .getElementById("new-event-btn")
+          .addEventListener("click", resetEventForm);
+        document
+          .getElementById("add-exception-btn")
+          .addEventListener("click", showExceptionModal);
+        document
+          .getElementById("save-exception-btn")
+          .addEventListener("click", saveException);
+        document
+          .getElementById("exception-type")
+          .addEventListener("change", toggleExceptionAmountField);
+        document
+          .getElementById("apply-filters-btn")
+          .addEventListener("click", updateChart);
+
+        // Get the modal close button and set up event handler
+        const closeBtn = document.querySelector(".close-btn");
+        closeBtn.addEventListener("click", hideExceptionModal);
+
+        // Load initial data
+        loadData();
+      });
+
+      function loadData() {
+        // Fetch state data
+        fetch("/state")
+          .then((response) => response.json())
+          .then((data) => {
+            appData = data;
+            populateAccountSelector();
+            populateAccountFilters();
+            initializeCalendar();
+            initializeChart();
+            setDefaultDateRange();
+          })
+          .catch((error) => console.error("Error loading data:", error));
+      }
+
+      function refreshData() {
+        fetch("/state")
+          .then((response) => response.json())
+          .then((data) => {
+            appData = data;
+            updateCalendarEvents();
+            updateChart();
+            resetEventForm();
+          })
+          .catch((error) => console.error("Error refreshing data:", error));
+      }
+
+      function populateAccountSelector() {
+        const accountSelector = document.getElementById("event-account");
+        accountSelector.innerHTML = "";
+
+        appData.accounts.forEach((account) => {
+          const option = document.createElement("option");
+          option.value = account.id;
+          option.textContent = account.name;
+          accountSelector.appendChild(option);
+        });
+      }
+
+      function populateAccountFilters() {
+        const accountFilters = document.getElementById("account-filters");
+        accountFilters.innerHTML = "";
+
+        appData.accounts.forEach((account) => {
+          const div = document.createElement("div");
+          div.className = "account-filter-item";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `account-filter-${account.id}`;
+          checkbox.value = account.id;
+          checkbox.checked = true;
+          checkbox.addEventListener("change", function () {
+            if (this.checked) {
+              selectedAccounts.add(account.id);
+            } else {
+              selectedAccounts.delete(account.id);
+            }
+          });
+
+          // Add account to selected accounts set
+          selectedAccounts.add(account.id);
+
+          const label = document.createElement("label");
+          label.htmlFor = `account-filter-${account.id}`;
+          label.textContent = account.name;
+
+          div.appendChild(checkbox);
+          div.appendChild(label);
+          accountFilters.appendChild(div);
+        });
+      }
+
+      function initializeCalendar() {
+        const calendarEl = document.getElementById("calendar");
+        calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          headerToolbar: {
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,listMonth",
+          },
+          events: getCalendarEvents(),
+          eventClick: function (info) {
+            const eventId = info.event.extendedProps.originalEventId;
+            const event = appData.events.find((e) => e.id === eventId);
+            if (event) {
+              displayEventInForm(event);
+            }
+          },
+        });
+        calendar.render();
+      }
+
+      function getCalendarEvents() {
+        return appData.eventOccurances.map((occurrence) => {
+          const event = {
+            title: occurrence.eventName,
+            start: occurrence.date,
+            allDay: true,
+            extendedProps: {
+              originalEventId: occurrence.eventId,
+              amount: occurrence.amount,
+              accountId: occurrence.accountId,
+              eventType: occurrence.eventType,
+            },
+            backgroundColor:
+              occurrence.eventType === "income" ? "#4CAF50" : "#F44336",
+          };
+          return event;
+        });
+      }
+
+      function updateCalendarEvents() {
+        calendar.removeAllEvents();
+        calendar.addEventSource(getCalendarEvents());
+      }
+
+      function initializeChart() {
+        const ctx = document.getElementById("balance-chart").getContext("2d");
+        balanceChart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: [],
+            datasets: [],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              x: {
+                type: "time",
+                time: {
+                  unit: "day",
+                },
+              },
+              y: {
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        updateChart();
+      }
+
+      function setDefaultDateRange() {
+        const today = new Date();
+        const startDate = new Date();
+        startDate.setMonth(today.getMonth() - 1);
+        const endDate = new Date();
+        endDate.setMonth(today.getMonth() + 3);
+
+        document.getElementById("date-range-start").value =
+          formatDate(startDate);
+        document.getElementById("date-range-end").value = formatDate(endDate);
+
+        dateRange.start = startDate;
+        dateRange.end = endDate;
+      }
+
+      function formatDate(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function updateChart() {
+        // Get selected date range
+        const startDate = new Date(
+          document.getElementById("date-range-start").value
+        );
+        const endDate = new Date(
+          document.getElementById("date-range-end").value
+        );
+        dateRange.start = startDate;
+        dateRange.end = endDate;
+
+        // Create datasets for each selected account
+        const datasets = [];
+        const colors = ["#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336"];
+
+        let accountIndex = 0;
+        selectedAccounts.forEach((accountId) => {
+          const account = appData.accounts.find((a) => a.id === accountId);
+          if (!account) return;
+
+          // Filter balances for this account and within date range
+          const balances = appData.accountBalances
+            .filter((b) => b.accountId === accountId)
+            .filter((b) => {
+              const date = new Date(b.date);
+              return date >= startDate && date <= endDate;
+            })
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          if (balances.length > 0) {
+            datasets.push({
+              label: account.name,
+              data: balances.map((b) => ({
+                x: new Date(b.date),
+                y: b.balance / 100, // Convert cents to dollars for display
+              })),
+              borderColor: colors[accountIndex % colors.length],
+              backgroundColor: colors[accountIndex % colors.length] + "33", // Add transparency
+              tension: 0.2,
+            });
+          }
+
+          accountIndex++;
+        });
+
+        // Update chart
+        balanceChart.data.datasets = datasets;
+        balanceChart.update();
+      }
+
+      function displayEventInForm(event) {
+        selectedEvent = event;
+
+        document.getElementById("event-id").value = event.id;
+        document.getElementById("event-name").value = event.name;
+        document.getElementById("event-category").value = event.category;
+        document.getElementById("event-account").value = event.account;
+        document.getElementById("event-amount").value = event.amount;
+        document.getElementById("event-start").value = formatDateTimeForInput(
+          new Date(event.start)
+        );
+        document.getElementById("event-type").value = event.type;
+
+        // Set RRule if exists
+        if (event.rrule) {
+          document.getElementById("event-rrule").value = event.rrule;
+          parseRRuleToForm(event.rrule);
+        } else {
+          document.getElementById("rrule-freq").value = "NONE";
+          updateRRuleBuilder();
+          document.getElementById("event-rrule").value = "";
+        }
+
+        // Display exceptions
+        exceptions = event.exceptions || {};
+        displayExceptions();
+
+        // Show delete button
+        document.getElementById("delete-event-btn").style.display =
+          "inline-block";
+        document.getElementById("save-event-btn").textContent = "Update Event";
+      }
+
+      function parseRRuleToForm(rruleStr) {
+        try {
+          const rule = rrule.RRule.fromString(rruleStr);
+
+          // Set frequency
+          document.getElementById("rrule-freq").value =
+            rule.options.freq === 0
+              ? "NONE"
+              : ["YEARLY", "MONTHLY", "WEEKLY", "DAILY"][rule.options.freq - 1];
+
+          // Set interval
+          document.getElementById("rrule-interval").value =
+            rule.options.interval || 1;
+
+          // Set end type
+          if (rule.options.until) {
+            document.getElementById("rrule-end-type").value = "until";
+            document.getElementById("rrule-until").value = formatDate(
+              rule.options.until
+            );
+          } else if (rule.options.count) {
+            document.getElementById("rrule-end-type").value = "count";
+            document.getElementById("rrule-count").value = rule.options.count;
+          } else {
+            document.getElementById("rrule-end-type").value = "never";
+          }
+
+          updateRRuleBuilder();
+          updateRRuleEndType();
+        } catch (e) {
+          console.error("Error parsing RRule:", e);
+        }
+      }
+
+      function updateRRuleBuilder() {
+        const freq = document.getElementById("rrule-freq").value;
+        const intervalContainer = document.getElementById(
+          "rrule-interval-container"
+        );
+        const endContainer = document.getElementById("rrule-end-container");
+
+        if (freq === "NONE") {
+          intervalContainer.style.display = "none";
+          endContainer.style.display = "none";
+          document.getElementById("event-rrule").value = "";
+        } else {
+          intervalContainer.style.display = "block";
+          endContainer.style.display = "block";
+          buildRRuleString();
+        }
+      }
+
+      function updateRRuleEndType() {
+        const endType = document.getElementById("rrule-end-type").value;
+        document.getElementById("rrule-until-container").style.display =
+          endType === "until" ? "block" : "none";
+        document.getElementById("rrule-count-container").style.display =
+          endType === "count" ? "block" : "none";
+
+        buildRRuleString();
+      }
+
+      function buildRRuleString() {
+        const freq = document.getElementById("rrule-freq").value;
+        if (freq === "NONE") {
+          document.getElementById("event-rrule").value = "";
+          return;
+        }
+
+        const interval = document.getElementById("rrule-interval").value;
+        const endType = document.getElementById("rrule-end-type").value;
+
+        let rruleStr = `FREQ=${freq};INTERVAL=${interval}`;
+
+        if (endType === "until") {
+          const untilDate = document.getElementById("rrule-until").value;
+          if (untilDate) {
+            rruleStr += `;UNTIL=${untilDate.replace(/-/g, "")}T000000Z`;
+          }
+        } else if (endType === "count") {
+          const count = document.getElementById("rrule-count").value;
+          rruleStr += `;COUNT=${count}`;
+        }
+
+        document.getElementById("event-rrule").value = rruleStr;
+      }
+
+      function resetEventForm() {
+        selectedEvent = null;
+        exceptions = {};
+
+        document.getElementById("event-form").reset();
+        document.getElementById("event-id").value = "";
+        document.getElementById("event-rrule").value = "";
+        document.getElementById("rrule-freq").value = "NONE";
+        document.getElementById("delete-event-btn").style.display = "none";
+        document.getElementById("save-event-btn").textContent = "Create Event";
+
+        updateRRuleBuilder();
+        displayExceptions();
+      }
+
+      function showExceptionModal() {
+        document.getElementById("exception-modal").style.display = "block";
+        document.getElementById("exception-form").reset();
+        document.getElementById("exception-amount-container").style.display =
+          "block";
+      }
+
+      function hideExceptionModal() {
+        document.getElementById("exception-modal").style.display = "none";
+      }
+
+      function toggleExceptionAmountField() {
+        const exceptionType = document.getElementById("exception-type").value;
+        document.getElementById("exception-amount-container").style.display =
+          exceptionType === "skip" ? "none" : "block";
+      }
+
+      function saveException() {
+        const date = document.getElementById("exception-date").value;
+        const type = document.getElementById("exception-type").value;
+        const amount =
+          parseInt(document.getElementById("exception-amount").value) || 0;
+
+        if (!date) return;
+
+        exceptions[date] = {
+          type: type,
+          amount: amount,
+        };
+
+        displayExceptions();
+        hideExceptionModal();
+      }
+
+      function displayExceptions() {
+        const container = document.getElementById("exceptions-list");
+        container.innerHTML = "";
+
+        Object.keys(exceptions).forEach((date) => {
+          const exception = exceptions[date];
+
+          const div = document.createElement("div");
+          div.className = "exception-item";
+
+          let exceptionText = `${date}: ${exception.type}`;
+          if (exception.type !== "skip") {
+            exceptionText += ` - $${exception.amount / 100}`;
+          }
+
+          div.textContent = exceptionText;
+
+          const removeBtn = document.createElement("button");
+          removeBtn.type = "button";
+          removeBtn.className = "remove-exception-btn";
+          removeBtn.textContent = "Remove";
+          removeBtn.addEventListener("click", function () {
+            delete exceptions[date];
+            displayExceptions();
+          });
+
+          div.appendChild(removeBtn);
+          container.appendChild(div);
+        });
+
+        // Update hidden field for exceptions
+        const hiddenInput = document.createElement("input");
+        hiddenInput.type = "hidden";
+        hiddenInput.name = "exceptions";
+        hiddenInput.value = JSON.stringify(exceptions);
+        document.getElementById("event-form").appendChild(hiddenInput);
+      }
+
+      function formatDateTimeForInput(date) {
+        return date.toISOString().slice(0, 16);
+      }
+
+      function refreshData() {
+        // Fetch updated data and refresh UI components
+        fetch("/state")
+          .then((response) => response.json())
+          .then((data) => {
+            appData = data;
+            updateCalendarEvents();
+            updateChart();
+            resetEventForm();
+          })
+          .catch((error) => console.error("Error refreshing data:", error));
+      }
+
+      // Replace the existing event form submission with this improved version
+      // Add this to your script section in the HTML file
+
+      document
+        .getElementById("event-form")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+
+          // Collect form data
+          const formData = new FormData(this);
+          const eventData = {
+            name: formData.get("name"),
+            category: formData.get("category"),
+            account: formData.get("account"),
+            amount: parseInt(formData.get("amount")),
+            start: new Date(formData.get("start")).toISOString(),
+            type: formData.get("type"),
+            rrule: formData.get("rrule"),
+            exceptions: exceptions,
+          };
+
+          // Add ID if updating an existing event
+          const eventId = formData.get("id");
+          if (eventId) {
+            eventData.id = eventId;
+          }
+
+          // Send to server
+          const method = eventId ? "PUT" : "POST";
+          const url = eventId ? `/events/${eventId}` : "/events";
+
+          fetch(url, {
+            method: method,
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(eventData),
+          })
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error("Network response was not ok");
+              }
+              return response.json();
+            })
+            .then((data) => {
+              refreshData();
+              resetEventForm();
+            })
+            .catch((error) => {
+              console.error("Error saving event:", error);
+              alert("Error saving event. Please try again.");
+            });
+        });
+
+      // Also replace the delete event handler
+      document
+        .getElementById("delete-event-btn")
+        .addEventListener("click", function () {
+          const eventId = document.getElementById("event-id").value;
+          if (!eventId) return;
+
+          if (confirm("Are you sure you want to delete this event?")) {
+            fetch(`/events/${eventId}`, {
+              method: "DELETE",
+            })
+              .then((response) => {
+                if (!response.ok) {
+                  throw new Error("Network response was not ok");
+                }
+                refreshData();
+                resetEventForm();
+              })
+              .catch((error) => {
+                console.error("Error deleting event:", error);
+                alert("Error deleting event. Please try again.");
+              });
+          }
+        });
+    </script>
+  </body>
+</html>

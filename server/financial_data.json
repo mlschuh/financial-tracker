@@ -1,0 +1,45 @@
+{
+    "accounts": [
+        {
+            "id": "1234",
+            "name": "Mitch TD"
+        },
+        {
+            "id": "0DAC4D96",
+            "name": "Mitch TD US"
+        },
+        {
+            "id": "E87A92D8",
+            "name": "Mitch TD US (temp)"
+        }
+    ],
+    "events": [
+        {
+            "id": "abc",
+            "name": "Mitch SMI",
+            "category": "Paycheck",
+            "account": "1234",
+            "amount": 500,
+            "start": "2025-01-12T00:00:00Z",
+            "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=FR",
+            "type": "income",
+            "exceptions": {
+                "2025-01-24": {
+                    "type": "skip",
+                    "amount": 25
+                }
+            }
+        },
+        {
+            "id": "FEF141CF",
+            "name": "Bonus",
+            "category": "Paycheck",
+            "account": "Mitch TD US",
+            "amount": 450,
+            "start": "2025-04-12T00:00:00Z",
+            "rrule": "",
+            "type": "income",
+            "exceptions": {}
+        }
+    ]
+}

@@ -1,0 +1,335 @@
+openapi: 3.0.0
+info:
+  title: Financial Management API
+  description: API for managing financial accounts, events, and calculating financial state
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+paths:
+  /accounts:
+    get:
+      summary: Retrieve all accounts
+      description: Returns a list of all financial accounts
+      responses:
+        '200':
+          description: A list of accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+    post:
+      summary: Create a new account
+      description: Add a new financial account to the system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountInput'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Account name already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conflict'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /events:
+    get:
+      summary: Retrieve all financial events
+      description: Returns a list of all financial events
+      responses:
+        '200':
+          description: A list of financial events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    post:
+      summary: Create a new financial event
+      description: Add a new financial event to the system
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventInput'
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid request or account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /state:
+    get:
+      summary: Calculate financial state
+      description: Calculate and return the current financial state including event occurrences and account balances
+      responses:
+        '200':
+          description: Complete financial state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialState'
+components:
+  schemas:
+    Account:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the account
+          example: "A1B2C3D4"
+        name:
+          type: string
+          description: Name of the account
+          example: "Checking Account"
+    AccountInput:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the account
+          example: "Checking Account"
+    Event:
+      type: object
+      required:
+        - id
+        - name
+        - category
+        - account
+        - amount
+        - start
+        - type
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the event
+          example: "E5F6G7H8"
+        name:
+          type: string
+          description: Name of the financial event
+          example: "Monthly Salary"
+        category:
+          type: string
+          description: Category of the financial event
+          example: "Income"
+        account:
+          type: string
+          description: ID of the associated account
+          example: "A1B2C3D4"
+        amount:
+          type: integer
+          description: Financial amount (in cents)
+          example: 250000
+        start:
+          type: string
+          format: date-time
+          description: Start date of the event
+          example: "2024-01-01T00:00:00Z"
+        rrule:
+          type: string
+          description: Recurrence rule in RRULE format
+          example: "FREQ=MONTHLY;INTERVAL=1"
+        type:
+          type: string
+          enum: [income, expense]
+          description: Type of the financial event
+          example: "income"
+        exceptions:
+          type: object
+          description: Exceptions to the recurrence rule
+          additionalProperties:
+            $ref: '#/components/schemas/Exception'
+    EventInput:
+      type: object
+      required:
+        - name
+        - category
+        - account
+        - amount
+        - start
+        - type
+      properties:
+        name:
+          type: string
+          description: Name of the financial event
+          example: "Monthly Salary"
+        category:
+          type: string
+          description: Category of the financial event
+          example: "Income"
+        account:
+          type: string
+          description: ID of the associated account
+          example: "A1B2C3D4"
+        amount:
+          type: integer
+          description: Financial amount (in cents)
+          example: 250000
+        start:
+          type: string
+          format: date-time
+          description: Start date of the event
+          example: "2024-01-01T00:00:00Z"
+        rrule:
+          type: string
+          description: Recurrence rule in RRULE format
+          example: "FREQ=MONTHLY;INTERVAL=1"
+        type:
+          type: string
+          enum: [income, expense]
+          description: Type of the financial event
+          example: "income"
+        exceptions:
+          type: object
+          description: Exceptions to the recurrence rule
+          additionalProperties:
+            $ref: '#/components/schemas/Exception'
+    Exception:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [single, forever, skip]
+          description: Type of exception
+          example: "single"
+        amount:
+          type: integer
+          description: Modified amount for this exception
+          example: 300000
+    EventOccurrence:
+      type: object
+      required:
+        - date
+        - amount
+        - eventId
+        - accountId
+        - eventType
+        - eventName
+      properties:
+        date:
+          type: string
+          format: date-time
+          description: Date of the event occurrence
+          example: "2024-01-01T00:00:00Z"
+        amount:
+          type: integer
+          description: Financial amount
+          example: 250000
+        eventId:
+          type: string
+          description: ID of the source event
+          example: "E5F6G7H8"
+        accountId:
+          type: string
+          description: ID of the associated account
+          example: "A1B2C3D4"
+        eventType:
+          type: string
+          description: Type of the event (income or expense)
+          example: "income"
+        eventName:
+          type: string
+          description: Name of the event
+          example: "Monthly Salary"
+    AccountBalance:
+      type: object
+      required:
+        - date
+        - balance
+        - accountId
+        - eventId
+      properties:
+        date:
+          type: string
+          format: date-time
+          description: Date of the balance
+          example: "2024-01-01T00:00:00Z"
+        balance:
+          type: integer
+          description: Account balance at this point
+          example: 250000
+        accountId:
+          type: string
+          description: ID of the account
+          example: "A1B2C3D4"
+        eventId:
+          type: string
+          description: ID of the event that caused this balance change
+          example: "E5F6G7H8"
+    FinancialState:
+      type: object
+      properties:
+        eventOccurances:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventOccurrence'
+        accountBalances:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountBalance'
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "account not found"
+    Conflict:
+      type: object
+      properties:
+        conflict:
+          type: string
+          description: Conflict message
+          example: "name in use"
