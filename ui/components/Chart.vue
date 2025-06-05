@@ -1,16 +1,54 @@
 <template>
   <div class="chart-container">
-    <Line :data="chartData" :options="chartOptions" ref="chartCanvas" />
+    <div class="date-range-selectors">
+      <label for="before-select">Before:</label>
+      <select
+        id="before-select"
+        v-model="selectedBefore"
+        @change="updateDateRange"
+      >
+        <option
+          v-for="option in durationOptions"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </option>
+      </select>
+
+      <label for="after-select">After:</label>
+      <select
+        id="after-select"
+        v-model="selectedAfter"
+        @change="updateDateRange"
+      >
+        <option
+          v-for="option in durationOptions"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+    <Line :data="reactiveChartData" :options="chartOptions" ref="chartCanvas" />
     <!-- <canvas ref="chartCanvas"></canvas> -->
   </div>
 </template>
 
 <script setup>
-import { Line } from 'vue-chartjs'
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { Line } from "vue-chartjs";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import { Chart, registerables } from "chart.js";
 import "chartjs-adapter-date-fns";
 import { useFullState } from "../stores/fullstate.js";
+import {
+  addMonths,
+  subMonths,
+  startOfDay,
+  endOfDay,
+  isWithinInterval,
+} from "date-fns";
 
 const fullStateStore = useFullState();
 
@@ -18,130 +56,198 @@ const fullStateStore = useFullState();
 Chart.register(...registerables);
 
 const chartCanvas = ref(null); // Reference to the canvas element
-let chartInstance = null; // Variable to store the Chart.js instance
 
-let chartLabels = computed(() => {
-  const start = new Date(fullStateStore.selectedDateRange.start); // Ensure input is converted to Date objects
-  const end = new Date(fullStateStore.selectedDateRange.end);
-  const dates = [];
+// Define localStorage keys
+const LOCALSTORAGE_BEFORE_KEY = "chartDateRangeBefore";
+const LOCALSTORAGE_AFTER_KEY = "chartDateRangeAfter";
 
-  // Generate dates
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push({x: new Date(d), y: 10}); // Push a copy of the current date
-  }
+// Combo box state
+const selectedBefore = ref(
+  parseInt(localStorage.getItem(LOCALSTORAGE_BEFORE_KEY)) || 1
+);
+const selectedAfter = ref(
+  parseInt(localStorage.getItem(LOCALSTORAGE_AFTER_KEY)) || 1
+);
+const durationOptions = [
+  { label: "1 month", value: 1 },
+  { label: "3 months", value: 3 },
+  { label: "6 months", value: 6 },
+  { label: "12 months", value: 12 },
+  { label: "24 months", value: 24 },
+  { label: "48 months", value: 48 },
+];
 
-  return dates;
+/**
+ * Updates the selectedDateRange in the store based on the 'Before' and 'After' selections.
+ */
+const updateDateRange = () => {
+  const today = new Date(); // Or a fixed reference date if needed
+
+  // Calculate the 'start' date based on 'Before' selection
+  const newStartDate = subMonths(today, selectedBefore.value);
+  // Ensure the start date is the beginning of that day
+  fullStateStore.selectedDateRange.start =
+    startOfDay(newStartDate).toISOString();
+
+  // Calculate the 'end' date based on 'After' selection
+  const newEndDate = addMonths(today, selectedAfter.value);
+  // Ensure the end date is the end of that day
+  fullStateStore.selectedDateRange.end = endOfDay(newEndDate).toISOString();
+};
+
+watch(selectedBefore, (newValue) => {
+  localStorage.setItem(LOCALSTORAGE_BEFORE_KEY, newValue.toString());
+  updateDateRange(); // Recalculate date range when value changes
 });
 
-const chartData = {
-    labels: computed(() => chartLabels),
-    datasets: [
-      {
-        label: "Value Over Time",
-        data: chartLabels,
-        borderColor: "blue",
-        backgroundColor: "rgba(0, 0, 255, 0.1)",
-        fill: true,
-      },
-    ],
-  }
+watch(selectedAfter, (newValue) => {
+  localStorage.setItem(LOCALSTORAGE_AFTER_KEY, newValue.toString());
+  updateDateRange(); // Recalculate date range when value changes
+});
 
+// Create a computed map for quick account name and color lookup
+const accountDetailsMap = computed(() => {
+  const map = {};
+  if (fullStateStore.accounts) {
+    fullStateStore.accounts.forEach((account) => {
+      map[account.id] = {
+        name: account.name,
+        color: account.color || getRandomColor(), // Use provided color, or fallback to random
+      };
+    });
+  }
+  return map;
+});
+
+// This computed property processes accountBalances to create datasets for the chart.
+const chartDataSets = computed(() => {
+  const accountBalances = fullStateStore.accountBalances;
+  const start = new Date(fullStateStore.selectedDateRange.start);
+  const end = new Date(fullStateStore.selectedDateRange.end);
+  const detailsMap = accountDetailsMap.value; // Use the computed map
+
+  // Group balances by accountId
+  const balancesByAccount = accountBalances.reduce((acc, item) => {
+    // Filter out balances outside the selected date range
+    const itemDate = new Date(item.date);
+    if (isWithinInterval(itemDate, { start, end })) {
+      if (!acc[item.accountId]) {
+        acc[item.accountId] = [];
+      }
+      acc[item.accountId].push({ x: itemDate, y: item.balance });
+    }
+    return acc;
+  }, {});
+
+  // Convert grouped balances into Chart.js dataset format
+  const datasets = Object.keys(balancesByAccount).map((accountId) => {
+    // Sort data points by date for proper line drawing
+    const sortedData = balancesByAccount[accountId].sort(
+      (a, b) => a.x.getTime() - b.x.getTime()
+    );
+
+    // Look up the account details, default to accountId if not found
+    const accountDetail = detailsMap[accountId] || {
+      name: `Account: ${accountId}`,
+      color: getRandomColor(),
+    };
+
+    return {
+      label: `Account: ${accountDetail.name}`, // You might want to map accountId to a more friendly name
+      data: sortedData,
+      borderColor: accountDetail.color, // Assign a random color for different accounts
+      backgroundColor: accountDetail.color, // Lighter background color for fill
+      fill: false, // Set to true if you want the area under the line filled
+      tension: 0.1, // Smoothness of the line
+      stepped: true,
+    };
+  });
+
+  return datasets;
+});
+
+// This computed property will provide the full chart data object
+// that Vue-Chartjs expects. When `chartDataPoints` changes, this
+// computed property will re-evaluate, and the `Line` component will
+// detect the change in its `data` prop and re-render.
+const reactiveChartData = computed(() => {
+  return {
+    // Labels are technically not strictly necessary for time scales when data has {x, y}
+    // but it's good practice to provide them or at least know what they represent.
+    // For time scale, Chart.js typically uses the 'x' values from your dataset's data.
+    labels: [],
+    datasets: chartDataSets.value,
+  };
+});
 const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        type: "time", // Use the timescale
-        time: {
-          unit: "day", // Display ticks by day
-        },
-        title: {
-          display: true,
-          text: "Date",
-        },
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: {
+    duration: 300, // Animation duration in milliseconds (e.g., 500ms = 0.5 seconds)
+    // You can also change the easing function for different animation effects
+    // easing: 'linear', // 'linear', 'easeInQuad', 'easeOutQuad', 'easeInOutQuad', etc.
+  },
+  scales: {
+    x: {
+      type: "time", // Use the timescale
+      time: {
+        unit: "day", // Display ticks by day
       },
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: "Value",
-        },
+      title: {
+        display: true,
+        text: "Date",
       },
     },
-  }
+    y: {
+      beginAtZero: true,
+      title: {
+        display: true,
+        text: "Value",
+      },
+    },
+  },
+};
 
-// Example chart configuration (replace or extend this as needed)
-// const chartConfig = {
-//   type: "line", // Chart type (e.g., 'line', 'bar', 'doughnut', etc.)
-//   data: {
-//     labels: computed(() => chartLabels),
-//     datasets: [
-//       {
-//         label: "Value Over Time",
-//         data: [
-//           { x: "2025-01-01T00:00:00Z", y: 10 },
-//           { x: "2025-01-02T00:00:00Z", y: 20 },
-//           { x: "2025-01-03T00:00:00Z", y: 15 },
-//         ],
-//         borderColor: "blue",
-//         backgroundColor: "rgba(0, 0, 255, 0.1)",
-//         fill: true,
-//       },
-//     ],
-//   },
-//   options: {
-//     responsive: true,
-//     maintainAspectRatio: false,
-//     //   scales: {
-//     //     y: {
-//     //       beginAtZero: true,
-//     //     },
-//     //   },
-//     scales: {
-//       x: {
-//         type: "time", // Use the timescale
-//         time: {
-//           unit: "day", // Display ticks by day
-//         },
-//         title: {
-//           display: true,
-//           text: "Date",
-//         },
-//       },
-//       y: {
-//         beginAtZero: true,
-//         title: {
-//           display: true,
-//           text: "Value",
-//         },
-//       },
-//     },
-//   },
-// };
+// Helper function to generate a random color for chart lines
+const getRandomColor = (alpha = 1) => {
+  const r = Math.floor(Math.random() * 255);
+  const g = Math.floor(Math.random() * 255);
+  const b = Math.floor(Math.random() * 255);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 // Initialize the Chart.js instance
 onMounted(() => {
-//   if (chartCanvas.value) {
-//     chartInstance = new Chart(chartCanvas.value, chartConfig);
-    // window.addEventListener("resize", () => {
-    //     console.log("Rezising window")
-    //   chartInstance.resize();
-    // });
-//   }
+  updateDateRange(); // Set initial dates based on default combo box values
 });
-
-// Destroy the Chart.js instance on unmount to avoid memory leaks
-// onUnmounted(() => {
-//   if (chartInstance) {
-//     chartInstance.destroy();
-//   }
-// });
 </script>
 
 <style scoped>
 .chart-container {
   position: relative;
-  height: 100%;
-  width: 80vw;
+  height: 80%;
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Arrange items vertically */
+  align-items: center; /* Center horizontally */
+}
+
+.date-range-selectors {
+  margin-bottom: 20px; /* Space between selectors and chart */
+  display: flex;
+  gap: 15px; /* Space between labels and selects */
+  align-items: center;
+}
+
+.date-range-selectors label {
+  font-weight: bold;
+}
+
+.date-range-selectors select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 120px; /* Ensure consistent width */
 }
 </style>

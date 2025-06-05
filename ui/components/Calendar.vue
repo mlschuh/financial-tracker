@@ -7,8 +7,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { useFullState } from "../stores/fullstate.js";
 
 const fullStateStore = useFullState();
-const isModalOpen = ref(false)
-const selectedDate = ref('')
+const isModalOpen = ref(false);
+const selectedDate = ref("");
 
 // Reactive calendar options
 const calendarOptions = computed(() => ({
@@ -22,32 +22,32 @@ const calendarOptions = computed(() => ({
   fixedWeekCount: false,
   eventClick: handleEventClick,
   dateClick: handleDateClick,
-  datesSet: handleDateSet
+  datesSet: handleDateSet,
 }));
 
 const handleDateSet = (dateRange) => {
   // console.log(dateRange)
-  fullStateStore.selectedDateRange = dateRange
-}
+  // fullStateStore.selectedDateRange = dateRange
+};
 
 const handleDateClick = (date) => {
-  console.log(date)
-  fullStateStore.addEventDate = date
-}
+  console.log(date);
+  fullStateStore.addEventDate = date;
+};
 
 const closeModal = () => {
-  isModalOpen.value = false
-}
+  isModalOpen.value = false;
+};
 
 const findEventOccuranceById = (id) => {
-  return fullStateStore.eventOccurances.find(event => {
-    console.log(`Comparing ${id} == ${event.eventId}-${event.date}`)
+  return fullStateStore.eventOccurances.find((event) => {
+    console.log(`Comparing ${id} == ${event.eventId}-${event.date}`);
     if (id == `${event.eventId}-${event.date}`) {
-      return true
+      return true;
     }
-    return false
-  })
-}
+    return false;
+  });
+};
 
 const formatEvents = (eventList) => {
   // Format the events if necessary (example: ensure they match FullCalendar's format)
@@ -72,8 +72,8 @@ const handleEventClick = (info) => {
 };
 
 const handleAddEvent = (newEvent) => {
-  console.log(newEvent)
-}
+  console.log(newEvent);
+};
 
 onMounted(() => {
   fullStateStore.updateFromServer();

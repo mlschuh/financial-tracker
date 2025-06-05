@@ -1,0 +1,83 @@
+<!-- templates/fullcalendar.html -->
+<div id="fullcalendar-quadrant" class="quadrant">
+  <h2>Calendar</h2>
+  <div id="calendar"></div>
+
+  <script>
+    // Global script to initialize calendar after HTMX swap
+    document.body.addEventListener("htmx:afterSwap", function (evt) {
+      // Only initialize if the swapped content is for the calendar quadrant
+      if (evt.target.id === "fullcalendar-quadrant") {
+        console.log(
+          "HTMX afterSwap detected for calendar quadrant. Initializing calendar."
+        );
+        const calendarEl = document.getElementById("calendar");
+        if (calendarEl && !window.currentCalendar) {
+          // Only initialize if not already
+          const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: "dayGridMonth",
+            headerToolbar: {
+              left: "prev,next today",
+              center: "title",
+              right: "dayGridMonth,timeGridWeek,timeGridDay",
+            },
+            events: {
+              url: "/api/calendar-events", // Ensure this matches your Go endpoint
+              method: "GET",
+              failure: function () {
+                alert("Error fetching calendar events!");
+              },
+            },
+            eventClick: function (info) {
+              const eventId = info.event.id;
+              if (eventId) {
+                htmx.trigger(document.body, "eventSelected", { id: eventId });
+                htmx.ajax(
+                  "GET",
+                  "/partials/event-list?selectedEvent=" + eventId,
+                  {
+                    target: "#event-list-quadrant",
+                    swap: "outerHTML",
+                  }
+                );
+              }
+            },
+            plugins: [
+              FullCalendar.dayGrid,
+              FullCalendar.timeGrid,
+              FullCalendarRRule,
+            ],
+          });
+          calendar.render();
+          window.currentCalendar = calendar; // Store instance
+          console.log("FullCalendar initialized and rendered.");
+
+          // Listen for calendarRefresh event for refetching
+          htmx.on(evt.target, "calendarRefresh", function () {
+            console.log("CalendarRefresh event caught. Refetching events.");
+            window.currentCalendar.refetchEvents();
+          });
+        } else if (
+          window.currentCalendar &&
+          window.currentCalendar.el === calendarEl
+        ) {
+          // If the calendar was already initialized but this partial was re-swapped (e.g. for configuration change)
+          console.log(
+            "Calendar already initialized. Just ensuring events are fresh."
+          );
+          window.currentCalendar.refetchEvents();
+        }
+      }
+    });
+
+    // You might also want a generic listener for a global refresh trigger
+    document.body.addEventListener("calendarRefresh", function () {
+      if (window.currentCalendar) {
+        console.log(
+          "Global calendarRefresh event detected. FullCalendar refetching events."
+        );
+        window.currentCalendar.refetchEvents();
+      }
+    });
+  </script>
+</div>

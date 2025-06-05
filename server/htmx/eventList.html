@@ -1,0 +1,35 @@
+<style>
+  .event-item {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    color: black;
+  }
+  .event-item.selected {
+    background-color: #439ba6; /* Light blue */
+    border-color: #0c6c79; /* Cyan border */
+    box-shadow: 0 0 8px rgba(0, 188, 212, 0.3); /* Subtle shadow */
+  }
+</style>
+
+<h2>Individual Events:</h2>
+{{ range .State.Events }} {{ $currentEvent := . }} {{ $isSelected := eq .ID
+$.SelectedEvent }}
+
+<div
+  class="event-item {{ if $isSelected }}selected{{ end }}"
+  hx-get="/eventList.html?selectedEvent={{ .ID }}"
+  hx-target="#event-list-quadrant"
+>
+  <h3>Event ID: {{ .ID }} - {{ .Name }}</h3>
+  <span><strong>Category: </strong>{{ .Category }}</span>
+  <span><strong>Account:</strong> {{ .Account }}</span>
+  <span> <strong>Amount:</strong> {{ .Amount }}</span>
+  <span> <strong>Start:</strong> {{ .Start }}</span>
+  <span> <strong>Type:</strong> {{ .Type }}</span>
+</div>
+{{ end }}
