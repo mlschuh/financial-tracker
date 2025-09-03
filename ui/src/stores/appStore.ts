@@ -10,6 +10,7 @@ import type {
   AccountBalance,
   AppStateResponse,
   Exception,
+  ToastType,
 } from "@/types/api";
 
 export const useAppStore = defineStore("app", () => {
@@ -27,6 +28,7 @@ export const useAppStore = defineStore("app", () => {
   const isCreatingNewEvent = ref<boolean>(true);
   const chartDateRangeMonths = ref<number>(3);
   const toastMessage = ref<string>("");
+  const toastType = ref<ToastType>("info"); // Add toast type
   const showToast = ref<boolean>(false);
 
   // Computed
@@ -50,8 +52,9 @@ export const useAppStore = defineStore("app", () => {
   });
 
   // Actions
-  const showToastMessage = (message: string) => {
+  const showToastMessage = (message: string, type: ToastType = "info") => {
     toastMessage.value = message;
+    toastType.value = type;
     showToast.value = true;
     setTimeout(() => {
       showToast.value = false;
@@ -60,7 +63,7 @@ export const useAppStore = defineStore("app", () => {
 
   const handleApiError = (error: any) => {
     const errorMessage = error.response?.data?.error || "An error occurred";
-    showToastMessage(errorMessage);
+    showToastMessage(errorMessage, "error");
   };
 
   const fetchAppState = async () => {
@@ -81,6 +84,7 @@ export const useAppStore = defineStore("app", () => {
     try {
       await apiClient.createAccount(accountData);
       await fetchAppState();
+      showToastMessage("Account created successfully", "success");
     } catch (error) {
       handleApiError(error);
     }
@@ -91,12 +95,12 @@ export const useAppStore = defineStore("app", () => {
       await apiClient.createEvent(eventData);
       await fetchAppState();
       isCreatingNewEvent.value = false;
+      showToastMessage("Event created successfully", "success");
     } catch (error) {
       handleApiError(error);
     }
   };
 
-  // Replace the old updateEvent with delete-then-create approach
   const updateEvent = async (eventId: string, eventData: EventCreate) => {
     try {
       // First delete the existing event
@@ -112,7 +116,7 @@ export const useAppStore = defineStore("app", () => {
       selectedEventOccurrenceId.value = "";
       editingEvent.value = null;
 
-      showToastMessage("Event updated successfully");
+      showToastMessage("Event updated successfully", "success");
     } catch (error) {
       handleApiError(error);
       // If there was an error, refresh the state to ensure consistency
@@ -155,7 +159,6 @@ export const useAppStore = defineStore("app", () => {
       },
     };
 
-    // Use the same delete-then-create approach for adding exceptions
     await updateEvent(eventId, updatedEvent);
   };
 
@@ -165,7 +168,6 @@ export const useAppStore = defineStore("app", () => {
     selectedEventOccurrenceId.value = "";
   };
 
-  // Add a method to delete an event (if you want to allow direct deletion)
   const deleteEvent = async (eventId: string) => {
     try {
       await apiClient.deleteEvent(eventId);
@@ -178,7 +180,7 @@ export const useAppStore = defineStore("app", () => {
         isCreatingNewEvent.value = true;
       }
 
-      showToastMessage("Event deleted successfully");
+      showToastMessage("Event deleted successfully", "success");
     } catch (error) {
       handleApiError(error);
     }
@@ -194,6 +196,7 @@ export const useAppStore = defineStore("app", () => {
     isCreatingNewEvent,
     chartDateRangeMonths,
     toastMessage,
+    toastType, // Add this to the return
     showToast,
     // Computed
     filteredAccountBalances,
@@ -202,7 +205,7 @@ export const useAppStore = defineStore("app", () => {
     createAccount,
     createEvent,
     updateEvent,
-    deleteEvent, // Add this if you want direct delete functionality
+    deleteEvent,
     selectEventOccurrence,
     setChartDateRange,
     addEventException,

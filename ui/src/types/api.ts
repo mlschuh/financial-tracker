@@ -65,3 +65,5 @@ export interface AppStateResponse {
 export interface ErrorResponse {
   error: string;
 }
+
+export type ToastType = "success" | "error" | "warning" | "info";
