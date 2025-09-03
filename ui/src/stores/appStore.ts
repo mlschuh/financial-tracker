@@ -143,7 +143,13 @@ export const useAppStore = defineStore("app", () => {
 
   const addEventException = async (eventId: string, date: string) => {
     const event = events.value.find((e) => e.id === eventId);
-    if (!event) return;
+    if (!event) {
+      console.error("Event not found:", eventId);
+      showToastMessage("Event not found", "error");
+      return;
+    }
+
+    console.log("Adding exception for event:", event.name, "date:", date);
 
     const updatedEvent: EventCreate = {
       name: event.name,
@@ -159,6 +165,9 @@ export const useAppStore = defineStore("app", () => {
       },
     };
 
+    console.log("Updated event with exception:", updatedEvent);
+
+    // Use the same delete-then-create approach for adding exceptions
     await updateEvent(eventId, updatedEvent);
   };
 

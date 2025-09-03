@@ -123,7 +123,8 @@
             :key="date"
             class="exception-item"
           >
-            <strong>{{ date }}:</strong> {{ exception.type }}
+            <strong>{{ formatExceptionDate(date) }}:</strong>
+            {{ exception.type }}
             <span v-if="exception.amount">
               - ${{ (exception.amount / 100).toFixed(2) }}</span
             >
@@ -133,13 +134,19 @@
 
       <div class="form-actions">
         <button
-          v-if="!store.isCreatingNewEvent && store.selectedEventOccurrenceId"
+          v-if="
+            !store.isCreatingNewEvent &&
+            store.selectedEventOccurrenceId &&
+            selectedOccurrence
+          "
           @click="handleIgnoreSelectedDate"
           type="button"
           class="btn-warning"
         >
-          Ignore Selected Date
+          Ignore Selected Date ({{ formatSelectedDate() }})
         </button>
+
+        <!-- Add delete button for existing events -->
         <button
           v-if="!store.isCreatingNewEvent && store.editingEvent"
           @click="handleDeleteEvent"
@@ -198,6 +205,14 @@ const startDate = computed({
   },
 });
 
+// Find the selected occurrence
+const selectedOccurrence = computed(() => {
+  if (!store.selectedEventOccurrenceId) return null;
+  return store.appState.eventOccurances.find(
+    (occurrence) => occurrence.id === store.selectedEventOccurrenceId
+  );
+});
+
 // Watch for editing event changes
 watch(
   () => store.editingEvent,
@@ -228,6 +243,28 @@ watch(
   }
 );
 
+const formatSelectedDate = () => {
+  if (!selectedOccurrence.value) return "";
+
+  try {
+    const date = new Date(selectedOccurrence.value.date);
+    return date.toLocaleDateString();
+  } catch (error) {
+    console.error("Error formatting selected date:", error);
+    return "Invalid Date";
+  }
+};
+
+const formatExceptionDate = (dateStr: string) => {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString();
+  } catch (error) {
+    console.error("Error formatting exception date:", error);
+    return dateStr;
+  }
+};
+
 const handleSubmit = async () => {
   if (store.isCreatingNewEvent) {
     await store.createEvent(formData.value);
@@ -237,16 +274,34 @@ const handleSubmit = async () => {
 };
 
 const handleIgnoreSelectedDate = async () => {
-  if (!store.selectedEventOccurrenceId || !store.editingEvent) return;
+  if (
+    !store.selectedEventOccurrenceId ||
+    !store.editingEvent ||
+    !selectedOccurrence.value
+  ) {
+    console.error("Missing required data for ignoring selected date");
+    return;
+  }
 
-  // Extract date from occurrence ID
-  const occurrenceIdParts = store.selectedEventOccurrenceId.split("-");
-  if (occurrenceIdParts.length < 2) return;
+  try {
+    // Get the date from the selected occurrence
+    const occurrenceDate = new Date(selectedOccurrence.value.date);
 
-  const dateStr = occurrenceIdParts.slice(1).join("-");
-  const date = new Date(dateStr).toISOString().split("T")[0]; // Get YYYY-MM-DD format
+    // Convert to YYYY-MM-DD format for the exception key
+    const exceptionDateKey = occurrenceDate.toISOString().split("T")[0];
 
-  await store.addEventException(store.editingEvent.id, date);
+    console.log(
+      "Adding exception for date:",
+      exceptionDateKey,
+      "from occurrence:",
+      selectedOccurrence.value
+    );
+
+    await store.addEventException(store.editingEvent.id, exceptionDateKey);
+  } catch (error) {
+    console.error("Error handling ignore selected date:", error);
+    store.showToastMessage("Error adding exception: " + error.message, "error");
+  }
 };
 
 const handleDeleteEvent = async () => {
@@ -364,7 +419,8 @@ const handleDeleteEvent = async () => {
 
 .btn-primary,
 .btn-secondary,
-.btn-warning {
+.btn-warning,
+.btn-danger {
   padding: 10px 20px;
   border: none;
   border-radius: 4px;
