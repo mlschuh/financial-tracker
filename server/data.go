@@ -76,6 +76,7 @@ func calculateState(mainData AppData) AppData {
 		// separate single events from recurring events
 		if e.RRule == "" {
 			mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+				ID:        fmt.Sprintf("%s-single", e.ID),
 				At:        e.Start,
 				Amount:    e.Amount,
 				EventId:   e.ID,
@@ -111,6 +112,7 @@ func calculateState(mainData AppData) AppData {
 					if exception.Type == "forever" {
 						amount = exception.Amount
 						mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+							ID:        fmt.Sprintf("%s-%s", e.ID, o),
 							At:        o,
 							Amount:    amount,
 							EventId:   e.ID,
@@ -121,6 +123,7 @@ func calculateState(mainData AppData) AppData {
 					} else if exception.Type == "single" {
 						// Only have the amount for this specific occurance
 						mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+							ID:        fmt.Sprintf("%s-%s", e.ID, o),
 							At:        o,
 							Amount:    exception.Amount,
 							EventId:   e.ID,

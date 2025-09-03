@@ -243,9 +243,17 @@ const startDate = computed({
 // Find the selected occurrence
 const selectedOccurrence = computed(() => {
   if (!store.selectedEventOccurrenceId) return null;
-  return store.appState.eventOccurances.find(
+  const occurrence = store.appState.eventOccurances.find(
     (occurrence) => occurrence.id === store.selectedEventOccurrenceId
   );
+
+  if (occurrence) {
+    console.log("Found selected occurrence:", occurrence);
+  } else {
+    console.log("No occurrence found for ID:", store.selectedEventOccurrenceId);
+  }
+
+  return occurrence;
 });
 
 // Sort exceptions by date for better display
@@ -264,6 +272,7 @@ watch(
   () => store.editingEvent,
   (newEvent) => {
     if (newEvent && !store.isCreatingNewEvent) {
+      console.log("Editing event changed to:", newEvent.name);
       formData.value = { ...newEvent };
     }
   },
@@ -285,6 +294,16 @@ watch(
         rrule: "",
         exceptions: {},
       };
+    }
+  }
+);
+
+// Watch for selected occurrence changes
+watch(
+  () => store.selectedEventOccurrenceId,
+  (newId) => {
+    if (newId) {
+      console.log("Selected occurrence ID changed to:", newId);
     }
   }
 );

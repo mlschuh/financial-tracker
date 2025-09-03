@@ -127,13 +127,30 @@ export const useAppStore = defineStore("app", () => {
   const selectEventOccurrence = (occurrenceId: string) => {
     selectedEventOccurrenceId.value = occurrenceId;
 
-    // Extract event ID from occurrence ID (assuming format: eventId-date)
-    const eventId = occurrenceId.split("-")[0];
-    const foundEvent = events.value.find((e) => e.id === eventId);
+    // Find the occurrence first
+    const occurrence = appState.value.eventOccurances.find(
+      (occ) => occ.id === occurrenceId
+    );
+
+    if (!occurrence) {
+      console.error("Occurrence not found:", occurrenceId);
+      return;
+    }
+
+    // Use the eventId from the occurrence to find the parent event
+    const foundEvent = events.value.find((e) => e.id === occurrence.eventId);
 
     if (foundEvent) {
       editingEvent.value = { ...foundEvent };
       isCreatingNewEvent.value = false;
+      console.log(
+        "Selected event:",
+        foundEvent.name,
+        "from occurrence:",
+        occurrence.date
+      );
+    } else {
+      console.error("Parent event not found for occurrence:", occurrence);
     }
   };
 
@@ -141,11 +158,19 @@ export const useAppStore = defineStore("app", () => {
     chartDateRangeMonths.value = months;
   };
 
+  // src/stores/appStore.ts - update the addEventException method
   const addEventException = async (eventId: string, date: string) => {
     const event = events.value.find((e) => e.id === eventId);
     if (!event) {
       console.error("Event not found:", eventId);
       showToastMessage("Event not found", "error");
+      return;
+    }
+
+    // Validate the date format (should be YYYY-MM-DD)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      console.error("Invalid date format:", date);
+      showToastMessage("Invalid date format", "error");
       return;
     }
 
@@ -167,8 +192,12 @@ export const useAppStore = defineStore("app", () => {
 
     console.log("Updated event with exception:", updatedEvent);
 
-    // Use the same delete-then-create approach for adding exceptions
-    await updateEvent(eventId, updatedEvent);
+    try {
+      await updateEvent(eventId, updatedEvent);
+    } catch (error) {
+      console.error("Error adding exception:", error);
+      throw error; // Re-throw so the UI can handle it
+    }
   };
 
   const startCreatingNewEvent = () => {
