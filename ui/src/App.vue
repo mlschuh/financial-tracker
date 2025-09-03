@@ -48,22 +48,30 @@ onMounted(() => {
   width: 70%;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .upper-left-pane {
   height: 60%;
   border-right: 1px solid #ddd;
   border-bottom: 1px solid #ddd;
+  overflow: hidden; /* Prevent overflow */
+  display: flex;
+  flex-direction: column;
 }
 
 .lower-left-pane {
   height: 40%;
   border-right: 1px solid #ddd;
+  overflow: hidden; /* Prevent overflow */
+  display: flex;
+  flex-direction: column;
 }
 
 .right-section {
   width: 30%;
   padding: 20px;
   background-color: #f9f9f9;
+  overflow-y: auto; /* Allow scrolling for the form */
 }
 </style>

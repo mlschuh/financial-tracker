@@ -160,9 +160,10 @@ const chartOptions = computed(() => ({
 <style scoped>
 .chart-panel {
   height: 100%;
-  padding: 15px;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 15px;
 }
 
 .chart-controls {
@@ -207,7 +208,8 @@ const chartOptions = computed(() => ({
 .chart-container {
   flex: 1;
   position: relative;
-  min-height: 0;
+  min-height: 0; /* Important for flex child with overflow */
+  overflow: hidden;
 }
 
 .no-data {
