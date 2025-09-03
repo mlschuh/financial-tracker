@@ -63,10 +63,10 @@ ChartJS.register(
 const store = useAppStore();
 
 const dateRanges = [
-  { label: "± 3 months", months: 3 },
-  { label: "± 6 months", months: 6 },
-  { label: "± 12 months", months: 12 },
-  { label: "± 24 months", months: 24 },
+  { label: "3 months", months: 3 },
+  { label: "6 months", months: 6 },
+  { label: "12 months", months: 12 },
+  { label: "24 months", months: 24 },
 ];
 
 const chartData = computed(() => {

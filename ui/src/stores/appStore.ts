@@ -36,7 +36,7 @@ export const useAppStore = defineStore("app", () => {
     const now = new Date();
     const startDate = new Date(
       now.getFullYear(),
-      now.getMonth() - chartDateRangeMonths.value,
+      now.getMonth() - 1,
       now.getDate()
     );
     const endDate = new Date(
