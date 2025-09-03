@@ -3,12 +3,22 @@
   <div class="app">
     <div class="main-container">
       <div class="left-section">
-        <div class="upper-left-pane">
-          <FullCalendarPanel />
-        </div>
-        <div class="lower-left-pane">
-          <AccountBalanceChart />
-        </div>
+        <ResizableSplitter
+          :min-upper-height="200"
+          :min-lower-height="150"
+          :initial-upper-ratio="0.6"
+        >
+          <template #upper>
+            <div class="upper-left-pane">
+              <FullCalendarPanel />
+            </div>
+          </template>
+          <template #lower>
+            <div class="lower-left-pane">
+              <AccountBalanceChart />
+            </div>
+          </template>
+        </ResizableSplitter>
       </div>
       <div class="right-section">
         <EventFormPanel />
@@ -25,6 +35,7 @@ import FullCalendarPanel from "@/components/FullCalendarPanel.vue";
 import EventFormPanel from "@/components/EventFormPanel.vue";
 import AccountBalanceChart from "@/components/AccountBalanceChart.vue";
 import ToastNotification from "@/components/ToastNotification.vue";
+import ResizableSplitter from "@/components/ResizableSplitter.vue";
 
 const store = useAppStore();
 
@@ -46,32 +57,30 @@ onMounted(() => {
 
 .left-section {
   width: 70%;
+  border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
 .upper-left-pane {
-  height: 60%;
-  border-right: 1px solid #ddd;
-  border-bottom: 1px solid #ddd;
-  overflow: hidden; /* Prevent overflow */
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .lower-left-pane {
-  height: 40%;
-  border-right: 1px solid #ddd;
-  overflow: hidden; /* Prevent overflow */
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .right-section {
   width: 30%;
   padding: 20px;
   background-color: #f9f9f9;
-  overflow-y: auto; /* Allow scrolling for the form */
+  overflow-y: auto;
 }
 </style>
