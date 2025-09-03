@@ -12,6 +12,7 @@
     "axios": "^1.9.0",
     "chart.js": "^4.4.9",
     "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-plugin-annotation": "^3.1.0",
     "date-fns": "^4.1.0",
     "pinia": "^3.0.3",
     "splitpanes": "^4.0.4",

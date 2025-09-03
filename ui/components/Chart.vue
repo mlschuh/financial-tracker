@@ -31,7 +31,12 @@
         </option>
       </select>
     </div>
-    <Line :data="reactiveChartData" :options="chartOptions" ref="chartCanvas" />
+    <Line
+      v-if="isDataReady"
+      :data="reactiveChartData"
+      :options="chartOptions"
+      ref="chartCanvas"
+    />
     <!-- <canvas ref="chartCanvas"></canvas> -->
   </div>
 </template>
@@ -50,10 +55,13 @@ import {
   isWithinInterval,
 } from "date-fns";
 
+// Import the annotation plugin
+import annotationPlugin from "chartjs-plugin-annotation";
+
 const fullStateStore = useFullState();
 
-// Register Chart.js components globally
-Chart.register(...registerables);
+// Register Chart.js components globally, including the annotation plugin
+Chart.register(...registerables, annotationPlugin); // <--- Register the annotation plugin here
 
 const chartCanvas = ref(null); // Reference to the canvas element
 
@@ -179,34 +187,83 @@ const reactiveChartData = computed(() => {
     datasets: chartDataSets.value,
   };
 });
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  animation: {
-    duration: 300, // Animation duration in milliseconds (e.g., 500ms = 0.5 seconds)
-    // You can also change the easing function for different animation effects
-    // easing: 'linear', // 'linear', 'easeInQuad', 'easeOutQuad', 'easeInOutQuad', etc.
-  },
-  scales: {
-    x: {
-      type: "time", // Use the timescale
-      time: {
-        unit: "day", // Display ticks by day
+
+// --- NEW/MODIFIED: Chart Options with Annotation ---
+const chartOptions = computed(() => {
+  // Make chartOptions a computed property if you want the annotation to react to date changes
+  const today = new Date(); // Get today's date
+  const todayStartOfDay = startOfDay(today); // Use start of day for the annotation
+
+  // Check if today falls within the selected chart range to decide if the annotation should be visible
+  const start = new Date(fullStateStore.selectedDateRange.start);
+  const end = new Date(fullStateStore.selectedDateRange.end);
+  const showTodayAnnotation = isWithinInterval(todayStartOfDay, { start, end });
+
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 300,
+    },
+    scales: {
+      x: {
+        type: "time",
+        time: {
+          unit: "day",
+          tooltipFormat: "PPP", // Friendly date format for tooltips
+          displayFormats: {
+            day: "MMM d", // Format for x-axis labels
+          },
+        },
+        title: {
+          display: true,
+          text: "Date",
+        },
       },
-      title: {
-        display: true,
-        text: "Date",
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: "Value",
+        },
       },
     },
-    y: {
-      beginAtZero: true,
-      title: {
-        display: true,
-        text: "Value",
+    plugins: {
+      annotation: {
+        annotations: {
+          todayLine: {
+            type: "line",
+            mode: "vertical",
+            scaleID: "x",
+            value: todayStartOfDay.toISOString(), // Set value to today's date
+            borderColor: "rgba(255, 99, 132, 0.8)", // Red color for today's line
+            borderWidth: 2,
+            borderDash: [5, 5], // Dashed line
+            label: {
+              enabled: true,
+              content: "Today",
+              position: "top",
+              font: {
+                weight: "bold",
+              },
+              backgroundColor: "rgba(255, 99, 132, 0.9)",
+              color: "white",
+              padding: 6,
+              borderRadius: 4,
+            },
+            // Only display if today is within the current chart range
+            display: showTodayAnnotation,
+            // To bring the line to the front, set z: higher than default (0)
+            // or lower than datasets if you want it behind.
+            // datasets typically have zIndex around 0.
+            // Setting a higher z-index often works best for annotations.
+            zIndex: 1,
+          },
+        },
       },
     },
-  },
-};
+  };
+});
 
 // Helper function to generate a random color for chart lines
 const getRandomColor = (alpha = 1) => {
@@ -216,11 +273,50 @@ const getRandomColor = (alpha = 1) => {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 };
 
+const isDataReady = computed(() => {
+  return (
+    fullStateStore.accountBalances &&
+    fullStateStore.accountBalances.length > 0 &&
+    fullStateStore.selectedDateRange.start &&
+    fullStateStore.selectedDateRange.end
+  );
+});
+
 // Initialize the Chart.js instance
 onMounted(() => {
   updateDateRange(); // Set initial dates based on default combo box values
 });
 </script>
+
+<style scoped>
+.chart-container {
+  position: relative;
+  height: 80%;
+  width: 100%;
+  display: flex;
+  flex-direction: column; /* Arrange items vertically */
+  align-items: center; /* Center horizontally */
+}
+
+.date-range-selectors {
+  margin-bottom: 20px; /* Space between selectors and chart */
+  display: flex;
+  gap: 15px; /* Space between labels and selects */
+  align-items: center;
+}
+
+.date-range-selectors label {
+  font-weight: bold;
+}
+
+.date-range-selectors select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+  min-width: 120px; /* Ensure consistent width */
+}
+</style>
 
 <style scoped>
 .chart-container {
