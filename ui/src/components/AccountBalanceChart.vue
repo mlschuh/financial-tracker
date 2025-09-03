@@ -41,7 +41,10 @@ import {
   Title,
   Tooltip,
   Legend,
+  TimeScale,
 } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
+import "chartjs-adapter-date-fns";
 import { Line } from "vue-chartjs";
 import { useAppStore } from "@/stores/appStore";
 
@@ -52,7 +55,9 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale,
+  annotationPlugin
 );
 
 const store = useAppStore();
@@ -100,12 +105,20 @@ const chartData = computed(() => {
     ([accountId, accountBalanceData]) => {
       const account = accounts.find((a) => a.id === accountId);
 
+      // Create data points with actual Date objects for better time scale handling
+      const dataPoints = allDates
+        .map((date) => {
+          const balanceEntry = accountBalanceData.find((b) => b.date === date);
+          return {
+            x: new Date(date),
+            y: balanceEntry ? balanceEntry.balance / 100 : null, // Convert to dollars
+          };
+        })
+        .filter((point) => point.y !== null); // Remove null values
+
       return {
         label: account?.name || `Account ${accountId}`,
-        data: allDates.map((date) => {
-          const balanceEntry = accountBalanceData.find((b) => b.date === date);
-          return balanceEntry ? balanceEntry.balance / 100 : null; // Convert to dollars
-        }),
+        data: dataPoints,
         borderColor: account?.color || "#3498db",
         backgroundColor: account?.color || "#3498db",
         tension: 0.1,
@@ -115,55 +128,114 @@ const chartData = computed(() => {
   );
 
   return {
-    labels: allDates.map((date) => new Date(date).toLocaleDateString()),
     datasets,
   };
 });
 
-const chartOptions = computed(() => ({
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top" as const,
+const chartOptions = computed(() => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Set to start of day for precise comparison
+
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: {
+      mode: "index" as const,
+      intersect: false,
     },
-    title: {
-      display: false,
-    },
-    tooltip: {
-      callbacks: {
-        label: function (context: any) {
-          return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+      title: {
+        display: false,
+      },
+      tooltip: {
+        callbacks: {
+          label: function (context: any) {
+            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+          },
+          title: function (context: any) {
+            const date = new Date(context[0].parsed.x);
+            return date.toLocaleDateString();
+          },
+        },
+      },
+      // Today's date annotation
+      annotation: {
+        annotations: {
+          todayLine: {
+            type: "line" as const,
+            xMin: today,
+            xMax: today,
+            borderColor: "#ff6b6b",
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              display: true,
+              content: "Today",
+              position: "start" as const,
+              yAdjust: -10,
+              backgroundColor: "#ff6b6b",
+              color: "white",
+              borderRadius: 4,
+              padding: {
+                x: 6,
+                y: 4,
+              },
+              font: {
+                size: 11,
+                weight: "bold" as const,
+              },
+            },
+          },
         },
       },
     },
-  },
-  scales: {
-    y: {
-      beginAtZero: false,
-      ticks: {
-        callback: function (value: any) {
-          return "$" + value.toFixed(2);
+    scales: {
+      x: {
+        type: "time" as const,
+        time: {
+          unit: "day" as const,
+          displayFormats: {
+            day: "MMM dd",
+          },
+          tooltipFormat: "MMM dd, yyyy",
+        },
+        title: {
+          display: true,
+          text: "Date",
+        },
+      },
+      y: {
+        beginAtZero: false,
+        title: {
+          display: true,
+          text: "Balance ($)",
+        },
+        ticks: {
+          callback: function (value: any) {
+            return "$" + value.toFixed(2);
+          },
         },
       },
     },
-  },
-  elements: {
-    point: {
-      radius: 3,
-      hoverRadius: 6,
+    elements: {
+      point: {
+        radius: 3,
+        hoverRadius: 6,
+      },
     },
-  },
-}));
+  };
+});
 </script>
 
 <style scoped>
 .chart-panel {
   height: 100%;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  padding: 15px;
 }
 
 .chart-controls {
@@ -208,8 +280,7 @@ const chartOptions = computed(() => ({
 .chart-container {
   flex: 1;
   position: relative;
-  min-height: 0; /* Important for flex child with overflow */
-  overflow: hidden;
+  min-height: 0;
 }
 
 .no-data {
