@@ -1,7 +1,12 @@
-<!-- src/components/FullCalendarPanel.vue -->
+<!-- Alternative version with more explicit scrolling control -->
 <template>
   <div class="fullcalendar-panel">
-    <FullCalendar ref="fullCalendar" :options="calendarOptions" />
+    <div class="calendar-header">
+      <h3>Financial Calendar</h3>
+    </div>
+    <div class="calendar-wrapper">
+      <FullCalendar ref="fullCalendar" :options="calendarOptions" />
+    </div>
   </div>
 </template>
 
@@ -44,18 +49,19 @@ const calendarOptions = computed(() => ({
   eventClick: (info: { event: EventApi }) => {
     store.selectEventOccurrence(info.event.id);
   },
-  height: "100%", // Use 100% of container height
-  contentHeight: "auto", // Let content determine height within container
-  aspectRatio: undefined, // Remove aspect ratio constraints
+  height: "auto", // Let content determine height
+  contentHeight: "auto", // Auto-size content
+  aspectRatio: 1.35, // Maintain reasonable aspect ratio
   headerToolbar: {
     left: "prev,next today",
     center: "title",
     right: "",
   },
-  // Ensure calendar fits within container
   handleWindowResize: true,
-  dayMaxEvents: 3, // Limit events per day to prevent overflow
-  moreLinkClick: "popover", // Show popover for "more" events
+  dayMaxEvents: false, // Show all events
+  dayGridEventMinHeight: 15,
+  // Allow natural sizing
+  fixedWeekCount: false, // Don't always show 6 weeks
 }));
 </script>
 
@@ -64,55 +70,84 @@ const calendarOptions = computed(() => ({
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   padding: 10px;
+  overflow: hidden;
 }
 
-/* Ensure FullCalendar takes full height of container */
+.calendar-header {
+  flex-shrink: 0;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.calendar-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 16px;
+}
+
+.calendar-wrapper {
+  flex: 1;
+  overflow-y: auto; /* Enable scrolling at wrapper level */
+  overflow-x: hidden;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+/* FullCalendar styling for natural sizing */
 :deep(.fc) {
-  height: 100% !important;
-  display: flex;
-  flex-direction: column;
+  height: auto !important; /* Let it size naturally */
 }
 
 :deep(.fc-view-harness) {
-  flex: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 :deep(.fc-scroller) {
-  overflow-y: auto !important;
-  flex: 1;
+  overflow: visible !important; /* Don't clip content */
 }
 
-:deep(.fc-daygrid-body) {
-  overflow: hidden;
-}
-
-/* Ensure events don't overflow cells */
-:deep(.fc-event) {
-  font-size: 11px;
-  margin: 1px 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-:deep(.fc-daygrid-event) {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Limit day cell height */
+/* Allow day cells to expand as needed */
 :deep(.fc-daygrid-day-frame) {
   min-height: 80px;
-  max-height: 120px;
-  overflow: hidden;
+  padding: 2px;
 }
 
-/* Style the "more" link */
-:deep(.fc-more-link) {
-  font-size: 10px;
-  color: #666;
+/* Rest of the event styling remains the same */
+:deep(.fc-event) {
+  font-size: 11px;
+  margin: 1px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+:deep(.fc-event:hover) {
+  opacity: 0.8;
+}
+
+/* Style the scrollbar for the wrapper */
+.calendar-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.calendar-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.calendar-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.calendar-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
 }
 </style>
