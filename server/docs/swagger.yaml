@@ -1,0 +1,612 @@
+# docs/swagger.yaml
+openapi: 3.0.0
+info:
+  title: Financial Tracker API
+  version: 1.0.0
+  description: This API provides endpoints for managing financial accounts, events, and viewing application state.
+  termsOfService: http://swagger.io/terms/
+  contact:
+    name: API Support
+    url: http://www.swagger.io/support
+    email: support@swagger.io
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080/
+    description: Local development server
+
+tags:
+  - name: Pages
+    description: HTML page rendering endpoints
+  - name: API
+    description: Core API endpoints for data management
+  - name: Accounts
+    description: Operations related to financial accounts
+  - name: Events
+    description: Operations related to financial events
+  - name: Calendar
+    description: Endpoints for calendar data
+  - name: State
+    description: Endpoints for application state
+
+paths:
+  /:
+    get:
+      summary: Get Root Page
+      description: Renders the main index page of the application.
+      tags:
+        - Pages
+      parameters:
+        - in: query
+          name: selectedEvent
+          schema:
+            type: string
+          description: Optional event ID to pre-select or highlight on the page.
+          example: "some-uuid-of-event"
+      responses:
+        '200':
+          description: Successfully rendered the index.html page.
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<!-- HTML content for index.html -->"
+  /index.html:
+    get:
+      summary: Get Index Page
+      description: Renders the main index page of the application (alias for /).
+      tags:
+        - Pages
+      parameters:
+        - in: query
+          name: selectedEvent
+          schema:
+            type: string
+          description: Optional event ID to pre-select or highlight on the page.
+          example: "some-uuid-of-event"
+      responses:
+        '200':
+          description: Successfully rendered the index.html page.
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<!-- HTML content for index.html -->"
+  /eventList.html:
+    get:
+      summary: Get Event List Page
+      description: Renders the event list HTML page.
+      tags:
+        - Pages
+      parameters:
+        - in: query
+          name: selectedEvent
+          schema:
+            type: string
+          description: Optional event ID to pre-select or highlight on the page.
+          example: "some-uuid-of-event"
+      responses:
+        '200':
+          description: Successfully rendered the eventList.html page.
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<!-- HTML content for eventList.html -->"
+  /fullcalendar.html:
+    get:
+      summary: Get FullCalendar Page
+      description: Renders the FullCalendar HTML page.
+      tags:
+        - Pages
+      parameters:
+        - in: query
+          name: selectedEvent
+          schema:
+            type: string
+          description: Optional event ID to pre-select or highlight on the page.
+          example: "some-uuid-of-event"
+      responses:
+        '200':
+          description: Successfully rendered the fullcalendar.html page.
+          content:
+            text/html:
+              schema:
+                type: string
+                example: "<!-- HTML content for fullcalendar.html -->"
+
+  /api/fullcalendarEvents.json:
+    get:
+      summary: Get FullCalendar Events
+      description: Returns financial events formatted as a list of FullCalendarEvent objects.
+      tags:
+        - API
+        - Calendar
+      responses:
+        '200':
+          description: Successfully retrieved events for FullCalendar.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FullCalendarEvent'
+        '500':
+          description: Internal server error, e.g., error loading data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/accounts:
+    get:
+      summary: Get All Accounts
+      description: Retrieve a list of all financial accounts.
+      tags:
+        - API
+        - Accounts
+      responses:
+        '200':
+          description: Successfully retrieved accounts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+        '500':
+          description: Internal server error, e.g., error loading data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create New Account
+      description: Creates a new financial account.
+      tags:
+        - API
+        - Accounts
+      requestBody:
+        description: Account object to be created.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate' # Using a specific schema for creation
+      responses:
+        '201':
+          description: Account created successfully. Returns the created account with its new ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400':
+          description: Invalid input in the request body.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict, an account with the provided name already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error, e.g., error saving data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/events:
+    get:
+      summary: Get All Events
+      description: Retrieve a list of all financial events.
+      tags:
+        - API
+        - Events
+      responses:
+        '200':
+          description: Successfully retrieved events.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+        '500':
+          description: Internal server error, e.g., error loading data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      summary: Create New Event
+      description: Creates a new financial event.
+      tags:
+        - API
+        - Events
+      requestBody:
+        description: Event object to be created.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventCreate' # Using a specific schema for creation
+      responses:
+        '201':
+          description: Event created successfully. Returns the created event with its new ID.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid input (e.g., malformed JSON, or associated account not found).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error, e.g., error saving data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/state:
+    get:
+      summary: Get Application State
+      description: Retrieves the full calculated application state, including events, accounts, balances, and occurrences.
+      tags:
+        - API
+        - State
+      responses:
+        '200':
+          description: Successfully retrieved application state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppStateResponse' # Refers to the specific response structure
+        '500':
+          description: Internal server error, e.g., error loading data or calculating state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    Account:
+      type: object
+      description: Represents a financial account.
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the account.
+          readOnly: true
+          example: "8a1b2c3d-e4f5-6789-0123-456789abcdef"
+        name:
+          type: string
+          description: Name of the account.
+          example: "Checking Account"
+        color:
+          type: string
+          description: Color associated with the account (e.g., hex code).
+          example: "#3498db"
+      required:
+        - name
+        - color
+    AccountCreate: # Schema for POST /api/accounts request body (ID is generated by server)
+      type: object
+      description: Request body for creating a new account.
+      properties:
+        name:
+          type: string
+          description: Name of the account.
+          example: "New Savings Account"
+        color:
+          type: string
+          description: Color associated with the account (e.g., hex code).
+          example: "#2ecc71"
+      required:
+        - name
+        - color
+
+    Event:
+      type: object
+      description: Represents a recurring or single financial event.
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the event.
+          readOnly: true
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"
+        name:
+          type: string
+          description: Name of the event.
+          example: "Monthly Salary"
+        category:
+          type: string
+          description: Category of the event (e.g., "Income", "Utilities").
+          example: "Income"
+        account:
+          type: string
+          description: The ID of the financial account this event is associated with.
+          example: "8a1b2c3d-e4f5-6789-0123-456789abcdef"
+        amount:
+          type: integer
+          format: int32
+          description: The amount of the event in cents (e.g., 300000 for $3000.00).
+          example: 300000
+        start:
+          type: string
+          format: date-time
+          description: The starting date and time of the event in ISO 8601 format.
+          example: "2023-01-01T00:00:00Z"
+        rrule:
+          type: string
+          description: |
+            Recurrence rule in iCalendar RRULE string format.
+            If empty, the event is considered a single occurrence.
+            See https://github.com/teambition/rrule-go for examples.
+          example: "FREQ=MONTHLY;BYMONTHDAY=1;INTERVAL=1"
+        type:
+          type: string
+          enum: [ "income", "expense" ]
+          description: The type of financial event (income or expense).
+          example: "income"
+        exceptions:
+          type: object
+          description: |
+            A map of exceptions to the recurrence rule, where keys are dates (YYYY-MM-DD)
+            and values are Exception objects.
+          additionalProperties:
+            $ref: '#/components/schemas/Exception'
+          example:
+            "2023-03-01":
+              type: "single"
+              amount: 250000
+            "2023-04-01":
+              type: "skip"
+      required:
+        - name
+        - account
+        - amount
+        - start
+        - type
+    EventCreate: # Schema for POST /api/events request body (ID is generated by server)
+      type: object
+      description: Request body for creating a new event.
+      properties:
+        name:
+          type: string
+          description: Name of the event.
+          example: "Groceries"
+        category:
+          type: string
+          description: Category of the event (e.g., "Food", "Utilities").
+          example: "Food"
+        account:
+          type: string
+          description: The ID of the financial account this event is associated with.
+          example: "8a1b2c3d-e4f5-6789-0123-456789abcdef"
+        amount:
+          type: integer
+          format: int32
+          description: The amount of the event in cents (e.g., 5000 for $50.00).
+          example: 5000
+        start:
+          type: string
+          format: date-time
+          description: The starting date and time of the event in ISO 8601 format.
+          example: "2023-11-15T00:00:00Z"
+        rrule:
+          type: string
+          description: Recurrence rule in iCalendar RRULE string format (optional).
+          example: "FREQ=WEEKLY;BYDAY=FR"
+        type:
+          type: string
+          enum: [ "income", "expense" ]
+          description: The type of financial event (income or expense).
+          example: "expense"
+        exceptions:
+          type: object
+          description: A map of exceptions to the recurrence rule (optional).
+          additionalProperties:
+            $ref: '#/components/schemas/Exception'
+      required:
+        - name
+        - account
+        - amount
+        - start
+        - type
+
+    Exception:
+      type: object
+      description: Defines an exception to a recurring event.
+      properties:
+        type:
+          type: string
+          enum: [ "single", "forever", "skip" ]
+          description: |
+            Type of exception:
+            - `single`: Overrides amount for a single occurrence.
+            - `forever`: Changes amount for this occurrence and all subsequent ones.
+            - `skip`: Skips this occurrence entirely.
+          example: "single"
+        amount:
+          type: integer
+          format: int32
+          description: The overridden amount in cents (required for 'single' and 'forever' types).
+          example: 25000
+      required:
+        - type
+        - amount # amount is required for 'single' and 'forever', but optional for 'skip'
+                 # We'll make it required here for simplicity, or add conditional logic if desired.
+
+    EventOccurance:
+      type: object
+      description: A single generated instance of an event (recurring or single).
+      properties:
+        id:
+          type: string
+          description: Unique identifier for this specific occurrence.
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210-2023-11-15T00:00:00Z"
+        date:
+          type: string
+          format: date-time
+          description: The date and time of this specific occurrence in ISO 8601 format.
+          example: "2023-11-15T00:00:00Z"
+        amount:
+          type: integer
+          format: int32
+          description: The amount of this occurrence in cents.
+          example: 5000
+        eventId:
+          type: string
+          description: The ID of the parent Event.
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"
+        accountId:
+          type: string
+          description: The ID of the associated Account.
+          example: "8a1b2c3d-e4f5-6789-0123-456789abcdef"
+        eventType:
+          type: string
+          enum: [ "income", "expense" ]
+          description: The type of this occurrence (income or expense).
+          example: "expense"
+        eventName:
+          type: string
+          description: The name of the parent event.
+          example: "Groceries"
+      required:
+        - id
+        - date
+        - amount
+        - eventId
+        - accountId
+        - eventType
+        - eventName
+
+    AccountBalance:
+      type: object
+      description: An account's balance at a specific point in time due to an event.
+      properties:
+        date:
+          type: string
+          format: date-time
+          description: The date and time when this balance was recorded.
+          example: "2023-11-15T00:00:00Z"
+        balance:
+          type: integer
+          format: int32
+          description: The account balance in cents after the associated event occurrence.
+          example: 1234567
+        accountId:
+          type: string
+          description: The ID of the account.
+          example: "8a1b2c3d-e4f5-6789-0123-456789abcdef"
+        eventId:
+          type: string
+          description: The ID of the event that caused this balance change.
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"
+      required:
+        - date
+        - balance
+        - accountId
+        - eventId
+
+    FullCalendarEvent:
+      type: object
+      description: Event object formatted for the FullCalendar JavaScript library.
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the calendar event.
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210-2023-11-15T00:00:00Z"
+        title:
+          type: string
+          description: Display title of the event.
+          example: "Groceries"
+        start:
+          type: string
+          format: date-time
+          description: Start date/time of the event in ISO 8601 format.
+          example: "2023-11-15T00:00:00Z"
+        end:
+          type: string
+          format: date-time
+          description: End date/time of the event in ISO 8601 format (can be same as start for point events).
+          example: "2023-11-15T00:00:00Z"
+        allDay:
+          type: boolean
+          description: True if the event is an all-day event.
+          example: false
+        url:
+          type: string
+          description: A URL to link to when the event is clicked.
+        className:
+          type: string
+          description: CSS class name for styling the event (e.g., "income", "expense").
+          example: "expense"
+        extendedProps:
+          type: object
+          description: Custom properties that will be passed through to event data.
+          additionalProperties: true
+        rrule:
+          type: string
+          description: iCalendar RRULE string for recurring events (FullCalendar v5+).
+          example: "FREQ=WEEKLY;BYDAY=FR"
+        exdate:
+          type: string
+          description: Comma-separated list of ISO 8601 dates to exclude from recurrence.
+          example: "2023-12-25T00:00:00Z"
+      required:
+        - id
+        - title
+        - start
+        - allDay
+
+    AppStateResponse:
+      type: object
+      description: The comprehensive calculated state of the application.
+      properties:
+        eventOccurances:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventOccurance'
+          description: All generated event occurrences based on current events and rules.
+        accountBalances:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountBalance'
+          description: The running balances of all accounts over time.
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+          description: All defined financial events.
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+          description: All defined financial accounts.
+      required:
+        - eventOccurances
+        - accountBalances
+        - events
+        - accounts
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format.
+      properties:
+        error:
+          type: string
+          description: A descriptive error message.
+          example: "Account with name 'Checking Account' already exists."
+      required:
+        - error

@@ -17,10 +17,20 @@ var templatesFS embed.FS
 //go:embed htmx/static
 var staticFS embed.FS
 
+//go:embed docs/swagger.yaml
+var swaggerYAMLEmbed []byte // Embed the swagger.yaml file
+
 type PageData struct {
 	State         AppData
 	SelectedEvent string
 }
+
+// Define constants for CDN URLs
+const (
+	swaggerUICSS              = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/swagger-ui.css"
+	swaggerUIJS               = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/swagger-ui-bundle.js"
+	swaggerUIStandalonePreset = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/swagger-ui-standalone-preset.js"
+)
 
 func getRootPage(c *gin.Context) {
 	selectedEventId := c.Query("selectedEvent")
@@ -170,6 +180,74 @@ func setupHttpEndpoints() {
 
 	// Serve static files directly
 	// r.Static("/", filepath.Join(".", "htmx"))
+
+	// 1. Endpoint to serve the swagger.yaml file
+	r.GET("/swagger/doc.yaml", func(c *gin.Context) {
+		c.Data(http.StatusOK, "application/x-yaml", swaggerYAMLEmbed)
+	})
+
+	// 2. Endpoint to render the Swagger UI page
+	r.GET("/swagger", func(c *gin.Context) {
+		htmlContent := fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Swagger UI</title>
+    <link rel="stylesheet" type="text/css" href="%s" />
+    <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/favicon-16x16.png" sizes="16x16" />
+    <style>
+        html
+        {
+            box-sizing: border-box;
+            overflow: -moz-scrollbars-vertical;
+            overflow-y: scroll;
+        }
+        *,
+        *:before,
+        *:after
+        {
+            box-sizing: inherit;
+        }
+        body
+        {
+            margin:0;
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+
+    <script src="%s" crossorigin></script>
+    <script src="%s" crossorigin></script>
+    <script>
+        window.onload = function() {
+            // Begin Swagger UI call region
+            const ui = SwaggerUIBundle({
+                url: "/swagger/doc.yaml", // This is the path to your embedded YAML
+                dom_id: '#swagger-ui',
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                ],
+                layout: "StandaloneLayout"
+            });
+            // End Swagger UI call region
+
+            window.ui = ui;
+        };
+    </script>
+</body>
+</html>`, swaggerUICSS, swaggerUIJS, swaggerUIStandalonePreset)
+
+		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(htmlContent))
+	})
 
 	log.Fatal(r.Run(":8080"))
 }
