@@ -93,15 +93,8 @@
       </div>
 
       <div class="form-group">
-        <label for="rrule">Recurrence Rule:</label>
-        <input
-          id="rrule"
-          v-model="formData.rrule"
-          type="text"
-          placeholder="e.g., FREQ=MONTHLY;BYMONTHDAY=1"
-          class="form-input"
-        />
-        <small class="form-help">Leave empty for single occurrence</small>
+        <label>Recurrence:</label>
+        <RRuleBuilder v-model="formData.rrule" />
       </div>
 
       <!-- Enhanced Exceptions Section -->
@@ -209,6 +202,7 @@
 import { ref, computed, watch } from "vue";
 import { useAppStore } from "@/stores/appStore";
 import type { EventCreate } from "@/types/api";
+import RRuleBuilder from "./RRuleBuilder.vue";
 
 const store = useAppStore();
 
