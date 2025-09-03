@@ -195,6 +195,50 @@ export const useAppStore = defineStore("app", () => {
     }
   };
 
+  const removeEventException = async (
+    eventId: string,
+    exceptionDate: string
+  ) => {
+    const event = events.value.find((e) => e.id === eventId);
+    if (!event) {
+      console.error("Event not found:", eventId);
+      showToastMessage("Event not found", "error");
+      return;
+    }
+
+    console.log(
+      "Removing exception for event:",
+      event.name,
+      "date:",
+      exceptionDate
+    );
+
+    // Create a copy of exceptions without the specified date
+    const updatedExceptions = { ...event.exceptions };
+    delete updatedExceptions[exceptionDate];
+
+    const updatedEvent: EventCreate = {
+      name: event.name,
+      category: event.category,
+      account: event.account,
+      amount: event.amount,
+      start: event.start,
+      rrule: event.rrule,
+      type: event.type,
+      exceptions: updatedExceptions,
+    };
+
+    console.log("Updated event after removing exception:", updatedEvent);
+
+    try {
+      await updateEvent(eventId, updatedEvent);
+      showToastMessage("Exception removed successfully", "success");
+    } catch (error) {
+      console.error("Error removing exception:", error);
+      showToastMessage("Failed to remove exception", "error");
+    }
+  };
+
   return {
     // State
     accounts,
@@ -218,6 +262,7 @@ export const useAppStore = defineStore("app", () => {
     selectEventOccurrence,
     setChartDateRange,
     addEventException,
+    removeEventException,
     startCreatingNewEvent,
     showToastMessage,
   };

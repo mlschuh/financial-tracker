@@ -104,30 +104,59 @@
         <small class="form-help">Leave empty for single occurrence</small>
       </div>
 
+      <!-- Enhanced Exceptions Section -->
       <div
         v-if="!store.isCreatingNewEvent && store.editingEvent?.exceptions"
         class="exceptions-section"
       >
-        <h4>Exceptions:</h4>
+        <div class="exceptions-header">
+          <h4>Exceptions</h4>
+          <span class="exceptions-count">
+            ({{ Object.keys(store.editingEvent.exceptions).length }})
+          </span>
+        </div>
+
         <div
           v-if="Object.keys(store.editingEvent.exceptions).length === 0"
           class="no-exceptions"
         >
-          No exceptions defined
+          <div class="no-exceptions-icon">📅</div>
+          <div>No exceptions defined</div>
+          <small>Use "Ignore Selected Date" to add exceptions</small>
         </div>
+
         <div v-else class="exceptions-list">
           <div
-            v-for="[date, exception] in Object.entries(
-              store.editingEvent.exceptions
-            )"
+            v-for="[date, exception] in sortedExceptions"
             :key="date"
             class="exception-item"
           >
-            <strong>{{ formatExceptionDate(date) }}:</strong>
-            {{ exception.type }}
-            <span v-if="exception.amount">
-              - ${{ (exception.amount / 100).toFixed(2) }}</span
+            <div class="exception-content">
+              <div class="exception-main">
+                <span class="exception-date">{{
+                  formatExceptionDate(date)
+                }}</span>
+                <span
+                  :class="[
+                    'exception-type',
+                    `exception-type-${exception.type}`,
+                  ]"
+                >
+                  {{ getExceptionTypeLabel(exception.type) }}
+                </span>
+              </div>
+              <div v-if="exception.amount" class="exception-amount">
+                ${{ (exception.amount / 100).toFixed(2) }}
+              </div>
+            </div>
+            <button
+              @click="handleRemoveException(date)"
+              type="button"
+              class="btn-remove-exception"
+              :title="`Remove exception for ${formatExceptionDate(date)}`"
             >
+              <span class="remove-icon">×</span>
+            </button>
           </div>
         </div>
       </div>
@@ -143,6 +172,7 @@
           type="button"
           class="btn-warning"
         >
+          <span class="btn-icon">🚫</span>
           Ignore Selected Date ({{ formatSelectedDate() }})
         </button>
 
@@ -153,6 +183,7 @@
           type="button"
           class="btn-danger"
         >
+          <span class="btn-icon">🗑️</span>
           Delete Event
         </button>
 
@@ -161,10 +192,14 @@
           type="submit"
           class="btn-primary"
         >
+          <span class="btn-icon">➕</span>
           Add Event
         </button>
 
-        <button v-else type="submit" class="btn-primary">Update Event</button>
+        <button v-else type="submit" class="btn-primary">
+          <span class="btn-icon">💾</span>
+          Update Event
+        </button>
       </div>
     </form>
   </div>
@@ -210,6 +245,17 @@ const selectedOccurrence = computed(() => {
   if (!store.selectedEventOccurrenceId) return null;
   return store.appState.eventOccurances.find(
     (occurrence) => occurrence.id === store.selectedEventOccurrenceId
+  );
+});
+
+// Sort exceptions by date for better display
+const sortedExceptions = computed(() => {
+  if (!store.editingEvent?.exceptions) return [];
+
+  return Object.entries(store.editingEvent.exceptions).sort(
+    ([dateA], [dateB]) => {
+      return new Date(dateA).getTime() - new Date(dateB).getTime();
+    }
   );
 });
 
@@ -265,6 +311,19 @@ const formatExceptionDate = (dateStr: string) => {
   }
 };
 
+const getExceptionTypeLabel = (type: string) => {
+  switch (type) {
+    case "skip":
+      return "Skip";
+    case "single":
+      return "Override";
+    case "forever":
+      return "Change Forever";
+    default:
+      return type;
+  }
+};
+
 const handleSubmit = async () => {
   if (store.isCreatingNewEvent) {
     await store.createEvent(formData.value);
@@ -301,6 +360,19 @@ const handleIgnoreSelectedDate = async () => {
   } catch (error) {
     console.error("Error handling ignore selected date:", error);
     store.showToastMessage("Error adding exception: " + error.message, "error");
+  }
+};
+
+const handleRemoveException = async (exceptionDate: string) => {
+  if (!store.editingEvent) return;
+
+  const formattedDate = formatExceptionDate(exceptionDate);
+  const confirmed = confirm(
+    `Are you sure you want to remove the exception for ${formattedDate}?\n\nThis will restore the original event occurrence for that date.`
+  );
+
+  if (confirmed) {
+    await store.removeEventException(store.editingEvent.id, exceptionDate);
   }
 };
 
@@ -382,32 +454,144 @@ const handleDeleteEvent = async () => {
   font-size: 12px;
 }
 
+/* Enhanced Exceptions Section */
 .exceptions-section {
   margin: 20px 0;
   padding: 15px;
   background-color: #f8f9fa;
-  border-radius: 4px;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
 }
 
-.exceptions-section h4 {
-  margin: 0 0 10px 0;
+.exceptions-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.exceptions-header h4 {
+  margin: 0;
   color: #333;
+  font-size: 16px;
+}
+
+.exceptions-count {
+  background-color: #6c757d;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 10px;
 }
 
 .no-exceptions {
-  color: #666;
-  font-style: italic;
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+}
+
+.no-exceptions-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.no-exceptions small {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
 }
 
 .exceptions-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
 }
 
 .exception-item {
-  padding: 5px 0;
-  color: #555;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.exception-item:hover {
+  border-color: #dee2e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.exception-content {
+  flex: 1;
+}
+
+.exception-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+
+.exception-date {
+  font-weight: 500;
+  color: #495057;
+}
+
+.exception-type {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.exception-type-skip {
+  background-color: #ffc107;
+  color: #856404;
+}
+
+.exception-type-single {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.exception-type-forever {
+  background-color: #dc3545;
+  color: white;
+}
+
+.exception-amount {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.btn-remove-exception {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.btn-remove-exception:hover {
+  background-color: #c82333;
+  transform: scale(1.1);
+}
+
+.remove-icon {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1;
 }
 
 .form-actions {
@@ -427,6 +611,14 @@ const handleDeleteEvent = async () => {
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-icon {
+  font-size: 16px;
 }
 
 .btn-primary {
