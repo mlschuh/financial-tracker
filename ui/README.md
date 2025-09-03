@@ -1,23 +1,33 @@
+# ui
 
-# FullCalendar Vue 3 Example Project
+This template should help get you started developing with Vue 3 in Vite.
 
-This is a fully-buildable example project for FullCalendar and Vue 3, leveraging [Vite](https://github.com/vitejs/vite).
+## Recommended IDE Setup
 
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
 
-## Installation
+## Type Support for `.vue` Imports in TS
 
-```bash
-git clone https://github.com/fullcalendar/fullcalendar-examples.git
-cd fullcalendar-examples/vue3
+TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+
+## Customize configuration
+
+See [Vite Configuration Reference](https://vite.dev/config/).
+
+## Project Setup
+
+```sh
 npm install
 ```
 
-## Build Commands
+### Compile and Hot-Reload for Development
 
-```bash
-npm run dev # builds and opens a web browser
+```sh
+npm run dev
+```
 
-# other commands:
-npm run build # builds files into dist/ directory
-npm run clean # start fresh
+### Type-Check, Compile and Minify for Production
+
+```sh
+npm run build
 ```

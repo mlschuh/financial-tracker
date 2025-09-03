@@ -1,64 +1,64 @@
 {
-  "accounts": [
-    {
-      "id": "1234",
-      "name": "Mitch TD",
-      "color": "blue"
-    },
-    {
-      "id": "0DAC4D96",
-      "name": "Mitch TD US",
-      "color": "green"
-    },
-    {
-      "id": "E87A92D8",
-      "name": "Mitch TD US (temp)",
-      "color": "red"
-    }
-  ],
-  "events": [
-    {
-      "id": "abc",
-      "name": "Mitch SMI",
-      "category": "Paycheck",
-      "account": "1234",
-      "amount": 500,
-      "start": "2025-01-12T00:00:00Z",
-      "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=FR",
-      "type": "income",
-      "exceptions": {
-        "2025-01-24": {
-          "type": "skip",
-          "amount": 25
+    "accounts": [
+        {
+            "id": "1234",
+            "name": "Mitch TD",
+            "color": "blue"
+        },
+        {
+            "id": "0DAC4D96",
+            "name": "Mitch TD US",
+            "color": "green"
+        },
+        {
+            "id": "E87A92D8",
+            "name": "Mitch TD US (temp)",
+            "color": "red"
         }
-      }
-    },
-    {
-      "id": "FEF141CF",
-      "name": "Bonus",
-      "category": "Paycheck",
-      "account": "1234",
-      "amount": 4500,
-      "start": "2025-04-12T00:00:00Z",
-      "rrule": "",
-      "type": "income",
-      "exceptions": {}
-    },
-    {
-      "id": "abcefg",
-      "name": "Caitlin Paycheck",
-      "category": "Paycheck",
-      "account": "0DAC4D96",
-      "amount": 560,
-      "start": "2025-04-12T00:00:00Z",
-      "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=FR",
-      "type": "income",
-      "exceptions": {
-        "2025-01-24": {
-          "type": "skip",
-          "amount": 25
+    ],
+    "events": [
+        {
+            "id": "FEF141CF",
+            "name": "Bonus",
+            "category": "Paycheck",
+            "account": "1234",
+            "amount": 4500,
+            "start": "2025-04-12T00:00:00Z",
+            "rrule": "",
+            "type": "income",
+            "exceptions": {}
+        },
+        {
+            "id": "abcefg",
+            "name": "Caitlin Paycheck",
+            "category": "Paycheck",
+            "account": "0DAC4D96",
+            "amount": 560,
+            "start": "2025-04-12T00:00:00Z",
+            "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=FR",
+            "type": "income",
+            "exceptions": {
+                "2025-01-24": {
+                    "type": "skip",
+                    "amount": 25
+                }
+            }
+        },
+        {
+            "id": "9E916764",
+            "name": "Mitch SMI Paycheck",
+            "category": "Paycheck",
+            "account": "1234",
+            "amount": 500,
+            "start": "2025-01-12T00:00:00Z",
+            "rrule": "FREQ=WEEKLY;INTERVAL=1;BYDAY=FR",
+            "type": "income",
+            "exceptions": {
+                "2025-01-24": {
+                    "type": "skip",
+                    "amount": 25
+                }
+            }
         }
-      }
-    }
-  ]
+    ]
 }

@@ -14,9 +14,6 @@ var (
 	mu       sync.RWMutex
 )
 
-// go:embed htmx/*
-// var staticFiles embed.FS
-
 // Filter function using generics
 func Filter[T any](slice []T, predicate func(T) bool) []T {
 	var result []T

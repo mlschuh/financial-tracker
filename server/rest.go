@@ -1,23 +1,16 @@
 package main
 
+// The _ "embed" seems to be needed to make gopls happy
 import (
-	"embed"
+	_ "embed"
 	"fmt"
-	"html/template"
-	"io/fs"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-//go:embed htmx/*.*
-var templatesFS embed.FS
-
-//go:embed htmx/static
-var staticFS embed.FS
-
-//go:embed docs/swagger.yaml
+//go:embed docs/*.yaml
 var swaggerYAMLEmbed []byte // Embed the swagger.yaml file
 
 type PageData struct {
@@ -58,26 +51,6 @@ func setupHttpEndpoints() {
 		}
 		c.Next()
 	})
-	// Load templates from the embedded file system
-	// We need to create a sub-filesystem for the templates
-	tmplFS, err := fs.Sub(templatesFS, "htmx")
-	if err != nil {
-		log.Fatalf("failed to create sub filesystem for templates: %s", err)
-	}
-	// Create a new html/template instance and parse the templates
-	// We use ParseFS to parse templates directly from an fs.FS
-	tmpl := template.Must(template.ParseFS(tmplFS, "*.html"))
-
-	// Set the template engine for Gin to use our parsed templates
-	r.SetHTMLTemplate(tmpl)
-
-	// Serve static files from the embedded file system
-	// We need to create a sub-filesystem for the static files
-	staticSubFS, err := fs.Sub(staticFS, "htmx/static")
-	if err != nil {
-		log.Fatalf("failed to create sub filesystem for static: %s", err)
-	}
-	r.StaticFS("/static", http.FS(staticSubFS))
 
 	// all of the main pages
 	r.GET("/", getRootPage)
@@ -156,6 +129,24 @@ func setupHttpEndpoints() {
 			}
 
 			c.JSON(http.StatusCreated, newEvent)
+		})
+
+		api.DELETE("/events/:id", func(c *gin.Context) {
+			eventID := c.Param("id") // Get the event ID from the URL path
+
+			err := deleteEvent(eventID)
+			if err != nil {
+				// Differentiate between "not found" and other internal errors
+				if err.Error() == fmt.Sprintf("event with ID %s not found", eventID) {
+					c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+				} else {
+					log.Printf("Error deleting event %s: %v", eventID, err) // Log the error on the server side
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete event"})
+				}
+				return
+			}
+
+			c.Status(http.StatusNoContent) // 204 No Content typically for successful DELETE
 		})
 
 		// Financial events endpoints

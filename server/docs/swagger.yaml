@@ -256,6 +256,43 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/events/{id}:
+    delete:
+      summary: Delete Event
+      description: Deletes a specific financial event by its ID.
+      tags:
+        - Events
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid # Assuming your pseudo_uuid generates UUID-like strings
+          required: true
+          description: Unique identifier of the event to delete.
+          example: "f0e9d8c7-b6a5-4321-fedc-ba9876543210"
+      responses:
+        '204':
+          description: Event successfully deleted. No content is returned.
+        '400':
+          description: Invalid event ID format (e.g., not a valid UUID if validation is added).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Event with the specified ID not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error, e.g., error loading or saving data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  
   /api/state:
     get:
       summary: Get Application State
