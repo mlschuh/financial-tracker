@@ -76,6 +76,7 @@ func calculateState(mainData AppData) AppData {
 		// separate single events from recurring events
 		if e.RRule == "" {
 			mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+				ID:        fmt.Sprintf("%s-single", e.ID),
 				At:        e.Start,
 				Amount:    e.Amount,
 				EventId:   e.ID,
@@ -111,6 +112,7 @@ func calculateState(mainData AppData) AppData {
 					if exception.Type == "forever" {
 						amount = exception.Amount
 						mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+							ID:        fmt.Sprintf("%s-%s", e.ID, o),
 							At:        o,
 							Amount:    amount,
 							EventId:   e.ID,
@@ -121,6 +123,7 @@ func calculateState(mainData AppData) AppData {
 					} else if exception.Type == "single" {
 						// Only have the amount for this specific occurance
 						mainData.EventOccurances = append(mainData.EventOccurances, EventOccurance{
+							ID:        fmt.Sprintf("%s-%s", e.ID, o),
 							At:        o,
 							Amount:    exception.Amount,
 							EventId:   e.ID,
@@ -270,6 +273,41 @@ func createEvent(newEvent Event) (*Event, error) {
 	}
 
 	return nil, fmt.Errorf("account not found")
+}
+
+// deleteEvent removes an event by its ID
+func deleteEvent(eventID string) error {
+	mu.Lock()
+	defer mu.Unlock()
+
+	data, err := loadData()
+	if err != nil {
+		return fmt.Errorf("failed to load data: %w", err)
+	}
+
+	// Find the index of the event to delete
+	foundIndex := -1
+	for i, event := range data.Events {
+		if event.ID == eventID {
+			foundIndex = i
+			break
+		}
+	}
+
+	if foundIndex == -1 {
+		return fmt.Errorf("event with ID %s not found", eventID)
+	}
+
+	// Remove the event from the slice
+	// This is a common Go pattern to remove an element from a slice
+	data.Events = append(data.Events[:foundIndex], data.Events[foundIndex+1:]...)
+
+	// Save the updated data
+	if err := saveData(data); err != nil {
+		return fmt.Errorf("failed to save data after deleting event: %w", err)
+	}
+
+	return nil
 }
 
 func getState() AppData {
