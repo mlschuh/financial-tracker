@@ -62,6 +62,8 @@ const calendarOptions = computed(() => ({
   dayGridEventMinHeight: 15,
   // Allow natural sizing
   fixedWeekCount: false, // Don't always show 6 weeks
+  // Fix timezone issues
+  timeZone: "UTC", // Treat all times as UTC
 }));
 </script>
 
