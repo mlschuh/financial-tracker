@@ -111,7 +111,7 @@ const chartData = computed(() => {
           const balanceEntry = accountBalanceData.find((b) => b.date === date);
           return {
             x: new Date(date),
-            y: balanceEntry ? balanceEntry.balance / 100 : null, // Convert to dollars
+            y: balanceEntry ? balanceEntry.balance / 100000 : null,
           };
         })
         .filter((point) => point.y !== null); // Remove null values
@@ -153,7 +153,7 @@ const chartOptions = computed(() => {
       tooltip: {
         callbacks: {
           label: function (context: any) {
-            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}k`;
           },
           title: function (context: any) {
             const date = new Date(context[0].parsed.x);
@@ -211,11 +211,14 @@ const chartOptions = computed(() => {
         beginAtZero: false,
         title: {
           display: true,
-          text: "Balance ($)",
+          text: "Balance ($k)",
         },
         ticks: {
-          callback: function (value: any) {
-            return "$" + value.toFixed(2);
+          callback: function (value: number | string) {
+            if (typeof value === "number") {
+              return "$" + value.toLocaleString() + "k";
+            }
+            return value;
           },
         },
       },
