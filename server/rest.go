@@ -2,16 +2,24 @@ package main
 
 // The _ "embed" seems to be needed to make gopls happy
 import (
+	"embed"
 	_ "embed"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 //go:embed docs/*.yaml
 var swaggerYAMLEmbed []byte // Embed the swagger.yaml file
+
+//go:embed ui_dist/*
+var staticFiles embed.FS
 
 type PageData struct {
 	State         AppData
@@ -24,18 +32,6 @@ const (
 	swaggerUIJS               = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/swagger-ui-bundle.js"
 	swaggerUIStandalonePreset = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.1/swagger-ui-standalone-preset.js"
 )
-
-func getRootPage(c *gin.Context) {
-	selectedEventId := c.Query("selectedEvent")
-
-	pd := PageData{
-		State:         getState(),
-		SelectedEvent: selectedEventId,
-	}
-	fmt.Println(pd.SelectedEvent)
-
-	c.HTML(http.StatusOK, "index.html", pd)
-}
 
 func setupHttpEndpoints() {
 	r := gin.Default()
@@ -52,35 +48,11 @@ func setupHttpEndpoints() {
 		c.Next()
 	})
 
-	// all of the main pages
-	r.GET("/", getRootPage)
-	r.GET("/index.html", getRootPage)
-	r.GET("/eventList.html", func(c *gin.Context) {
-		selectedEventId := c.Query("selectedEvent")
-
-		pd := PageData{
-			State:         getState(),
-			SelectedEvent: selectedEventId,
-		}
-		fmt.Println(pd.SelectedEvent)
-
-		c.HTML(http.StatusOK, "eventList.html", pd)
-	})
-
-	r.GET("/fullcalendar.html", func(c *gin.Context) {
-		selectedEventId := c.Query("selectedEvent")
-
-		pd := PageData{
-			State:         getState(),
-			SelectedEvent: selectedEventId,
-		}
-		fmt.Println(pd.SelectedEvent)
-
-		c.HTML(http.StatusOK, "fullcalendar.html", pd)
-	})
-	r.GET("/api/fullcalendarEvents.json", func(c *gin.Context) {
-		c.JSON(http.StatusOK, getEventsAsFullcalendar())
-	})
+	// Get the embedded filesystem for the dist directory
+	distFS, err := fs.Sub(staticFiles, "ui_dist")
+	if err != nil {
+		panic(err)
+	}
 
 	api := r.Group("/api")
 	{
@@ -238,6 +210,36 @@ func setupHttpEndpoints() {
 </html>`, swaggerUICSS, swaggerUIJS, swaggerUIStandalonePreset)
 
 		c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(htmlContent))
+	})
+
+	// SPA handler - serves index.html for all non-API routes
+	r.NoRoute(func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		// Skip API routes (adjust prefix as needed)
+		if strings.HasPrefix(path, "/api/") {
+			c.JSON(404, gin.H{"error": "Not found"})
+			return
+		}
+
+		// Check if file exists in embedded FS
+		if _, err := distFS.Open(strings.TrimPrefix(path, "/")); err == nil {
+			// File exists, serve it
+			c.FileFromFS(path, http.FS(distFS))
+			return
+		}
+
+		// File doesn't exist, serve index.html (SPA fallback)
+		c.Header("Content-Type", "text/html")
+		indexFile, err := distFS.Open("index.html")
+		if err != nil {
+			c.String(500, "Could not open index.html")
+			return
+		}
+		defer indexFile.Close()
+
+		http.ServeContent(c.Writer, c.Request, "index.html",
+			time.Time{}, indexFile.(io.ReadSeeker))
 	})
 
 	log.Fatal(r.Run(":8080"))

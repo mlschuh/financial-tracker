@@ -4,6 +4,8 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -45,5 +47,17 @@ func printTimeSlice(ts []time.Time) {
 }
 
 func main() {
+	// Get the directory of the currently running executable
+	// This approach is generally robust across different OSes.
+	ex, err := os.Executable()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get executable path: %v", err))
+	}
+	execDir := filepath.Dir(ex)
+
+	// Construct the full path to your data file
+	dataFile = filepath.Join(execDir, dataFile)
+	fmt.Printf("Data file path: %s\n", dataFile) // For debugging
+
 	setupHttpEndpoints()
 }

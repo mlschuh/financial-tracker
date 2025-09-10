@@ -190,13 +190,22 @@ func loadData() (data AppData, err error) {
 	opendFile, err := os.ReadFile(dataFile)
 	if err != nil {
 		if os.IsNotExist(err) {
-			data = AppData{
-				Accounts: []Account{},
-				Events:   []Event{},
+			d := Account{
+				ID:    "1",
+				Name:  "Sample Acount",
+				Color: "blue",
 			}
-			return data, nil
+
+			var a []Account
+			a = append(a, d)
+
+			saveData(AppData{
+				Accounts: a,
+				Events:   []Event{},
+			})
+			return loadData()
 		}
-		return AppData{}, nil
+		panic("Error loading data")
 	}
 	var localData AppData
 	err = json.Unmarshal(opendFile, &localData)
